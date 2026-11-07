@@ -713,8 +713,7 @@ a.contact-item:hover { border-color: rgba(255,46,147,.4); }
 }
 
 /* "Huna rada? Tuko na form." — Rada Republic texting the visitor */
-.rada-chat { display: grid; grid-template-columns: 34px auto; gap: 10px; align-items: end; margin: 0 0 28px; width: fit-content; max-width: 100%; }
-.chat-avatar { width: 34px; height: 40px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(255, 190, 60, .3)); }
+.rada-chat { margin: 0 0 28px; width: fit-content; max-width: 100%; }
 .chat-msgs { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .chat-from { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px 4px; }
 .bubble { position: relative; padding: 11px 20px 12px; border-radius: 22px; font-family: "Roboto", "Inter", sans-serif; font-weight: 900; font-style: italic; font-size: clamp(21px, 2.3vw, 28px); letter-spacing: -.01em; line-height: 1.15; text-transform: uppercase;
