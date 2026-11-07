@@ -700,26 +700,37 @@ a.contact-item:hover { border-color: rgba(255,46,147,.4); }
 .faq-item p { padding: 0 20px 18px; color: var(--muted); }
 @media (max-width: 760px) { .faq-layout { grid-template-columns: 1fr; gap: 20px; } .faq-nav { position: static; display: flex; flex-wrap: wrap; } .faq-nav a { border: 1px solid var(--border-2); border-radius: 999px; padding: 7px 14px; font-size: 14px; } }
 
-/* ---------- Hero title: RADA solid + REPUBLIC outlined ---------- */
-.hero-title { margin: 22px 0 26px; line-height: .92; text-transform: uppercase; font-weight: 900; letter-spacing: -.03em; }
+/* ---------- Hero title: "WELCOME TO THE" solid + "REPUBLIC" outlined (poster style) ---------- */
+/* Roboto (variable) with a text stroke: the font's overlapping stroke joins show inside
+   the letters (R, E, P, B), the same look as the Rada Republic poster. */
+.hero-title { margin: 22px 0 28px; font-family: "Roboto", "Inter", sans-serif; text-transform: uppercase; font-weight: 900; line-height: .9; width: fit-content; max-width: 100%; }
 .hero-title span { display: block; }
-.hero-title .kicker { font-size: clamp(13px, 1.4vw, 16px); letter-spacing: .32em; font-weight: 700; color: var(--pink-2); margin-bottom: 14px; line-height: 1.2; }
-.hero-title .solid { font-size: clamp(48px, 7vw, 104px); color: #fff; }
-.hero-title .outline { font-size: clamp(42px, 6.3vw, 94px); color: #fff; filter: url(#rr-outline); letter-spacing: -.01em; padding: 0 3px; }
+.hero-title .solid { font-size: clamp(30px, 4.15vw, 62px); color: #fff; letter-spacing: -.01em; margin-bottom: .14em; }
+.hero-title .outline { font-size: clamp(56px, 7.9vw, 118px); color: transparent; -webkit-text-stroke: 2.5px #fff; letter-spacing: -.035em; }
 @media (max-width: 900px) {
-  .hero-title .solid { font-size: clamp(56px, 17vw, 110px); }
-  .hero-title .outline { font-size: clamp(44px, 13.4vw, 96px); }
+  .hero-title .solid { font-size: clamp(28px, 10vw, 62px); }
+  .hero-title .outline { font-size: clamp(52px, 19vw, 118px); -webkit-text-stroke-width: 2px; }
 }
 
-/* "Huna rada? Tuko na form." as a text-message exchange */
-.rada-chat { display: flex; flex-direction: column; gap: 10px; margin: 0 0 26px; max-width: 400px; }
-.bubble { position: relative; padding: 11px 18px 13px; border-radius: 22px; font-weight: 800; font-style: italic; font-size: clamp(19px, 2vw, 23px); letter-spacing: -.01em; width: fit-content; line-height: 1.2;
-  opacity: 0; transform: translateY(10px) scale(.95); animation: bubbleIn .45s cubic-bezier(.2, .9, .3, 1.25) forwards; }
-.bubble .who { display: block; font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; opacity: .65; margin-bottom: 3px; }
-.bubble.ask { background: rgba(255,255,255,.07); border: 1px solid var(--border-2); border-bottom-left-radius: 6px; animation-delay: .3s; }
-.bubble.reply { align-self: flex-end; background: var(--grad); border-bottom-right-radius: 6px; box-shadow: 0 14px 34px -12px rgba(255,46,147,.75); animation-delay: 1.1s; }
+/* "Huna rada? Tuko na form." — Rada Republic texting the visitor */
+.rada-chat { display: grid; grid-template-columns: 34px auto; gap: 10px; align-items: end; margin: 0 0 28px; width: fit-content; max-width: 100%; }
+.chat-avatar { width: 34px; height: 40px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(255, 190, 60, .3)); }
+.chat-msgs { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.chat-from { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px 4px; }
+.bubble { position: relative; padding: 11px 20px 12px; border-radius: 22px; font-family: "Roboto", "Inter", sans-serif; font-weight: 900; font-style: italic; font-size: clamp(21px, 2.3vw, 28px); letter-spacing: -.01em; line-height: 1.15; text-transform: uppercase;
+  opacity: 0; transform: translateY(10px) scale(.95); transform-origin: left bottom; animation: bubbleIn .45s cubic-bezier(.2, .9, .3, 1.25) forwards; }
+.bubble.ask { background: rgba(255,255,255,.08); border: 1px solid var(--border-2); border-bottom-left-radius: 6px; animation-delay: .3s; }
+.bubble.reply { background: var(--grad); border-top-left-radius: 6px; box-shadow: 0 14px 34px -12px rgba(255,46,147,.75); animation-delay: .95s; display: grid; }
+.bubble.reply > * { grid-area: 1 / 1; }
+.bubble .msg { opacity: 0; animation: fadeIn .3s ease 2.05s forwards; }
+.typing { display: inline-flex; gap: 5px; align-items: center; align-self: center; animation: fadeOut .2s ease 1.95s forwards; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: #fff; opacity: .5; animation: typingDot 1s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
 @keyframes bubbleIn { to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .bubble { opacity: 1; transform: none; } }
+@keyframes fadeIn { to { opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+@keyframes typingDot { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bubble, .bubble .msg { opacity: 1; transform: none; } .typing { display: none; } }
 
 /* ---------- Event cards: banner image, details underneath ---------- */
 .ev-grid { display: grid; gap: 40px 22px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }

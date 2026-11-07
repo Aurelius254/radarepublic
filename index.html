@@ -8,19 +8,10 @@
   <meta name="theme-color" content="#07060b">
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="home" data-page="home">
-  <!-- Clean outline for "REPUBLIC": grow the letters, then cut the original shape out -->
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <filter id="rr-outline" x="-5%" y="-10%" width="110%" height="120%">
-      <feMorphology in="SourceAlpha" operator="dilate" radius="1.6" result="grown"/>
-      <feComposite in="grown" in2="SourceAlpha" operator="out" result="ring"/>
-      <feFlood flood-color="#ffffff"/>
-      <feComposite in2="ring" operator="in"/>
-    </filter>
-  </svg>
   <div id="site-header"></div>
 
   <main>
@@ -31,10 +22,15 @@
       <div class="container hero-grid">
         <div>
           <span class="pill">Now selling · Nairobi &amp; beyond</span>
-          <h1 class="hero-title"><span class="kicker">Welcome to</span><span class="solid">Rada</span><span class="outline">Republic</span></h1>
-          <div class="rada-chat" aria-label="Huna rada? Tuko na form.">
-            <div class="bubble ask"><span class="who">You</span>Huna rada?</div>
-            <div class="bubble reply"><span class="who">Rada Republic</span>Tuko na form.</div>
+          <h1 class="hero-title"><span class="solid">Welcome to the</span><span class="outline">Republic</span></h1>
+          <!-- Rada Republic texts the visitor: "Got nothing on? We've got you." -->
+          <div class="rada-chat" role="img" aria-label="Rada Republic: Huna rada? Tuko na form.">
+            <img class="chat-avatar" src="assets/logo-sm.png" alt="">
+            <div class="chat-msgs">
+              <span class="chat-from">Rada Republic</span>
+              <div class="bubble ask">Huna rada?</div>
+              <div class="bubble reply"><span class="typing" aria-hidden="true"><i></i><i></i><i></i></span><span class="msg">Tuko na form.</span></div>
+            </div>
           </div>
           <p class="lead">Tickets to the loudest nights in Kenya and the merch to wear to them. Pay with M-Pesa in seconds, with no account needed.</p>
           <div class="hero-actions">
