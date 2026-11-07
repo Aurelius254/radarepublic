@@ -79,7 +79,7 @@
       renderSizes();
 
       const more = RR_DATA.products.filter((x) => x.id !== p.id).slice(0, 4);
-      $("#more").innerHTML = `<div class="section-head"><h2 class="h2" style="font-size:30px">You might also like</h2><a class="see-all" href="merch.html">See all ${icon("arrow")}</a></div><div class="row4">${more.map(RR.productCard).join("")}</div>`;
+      $("#more").innerHTML = `<div class="section-head"><h2 class="h2" style="font-size:30px">You might also like</h2><a class="see-all" href="merch.html">See all ${icon("arrow")}</a></div><div class="ev-grid ev-row">${more.map(RR.productCard).join("")}</div>`;
     })();
   </script>
 </body>

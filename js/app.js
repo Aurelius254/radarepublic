@@ -133,18 +133,14 @@
       ${showPrice ? `<div class="ev-price">From <b>${fmt(minPrice(e))}</b></div>` : ""}
     </a>`;
   }
+  // Merch card: same layout as the event card (image on top, details underneath).
   function productCard(p) {
-    return `<a class="card" href="product.html?id=${p.id}">
-      <div class="card-media square" style="position:relative">${productArt(p)}
-        ${p.badge ? `<span class="tag pink" style="position:absolute;top:12px;left:12px">${esc(p.badge)}</span>` : ""}</div>
-      <div class="card-body">
-        <div class="card-meta" style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:600">${esc(p.category)}</div>
-        <div class="card-title">${esc(p.name)}</div>
-        <div class="card-foot">
-          <div class="price">${fmt(p.price)}</div>
-          <span class="go">${icon("arrow")}</span>
-        </div>
-      </div>
+    const sizes = p.sizes.length === 1 ? p.sizes[0] : `Sizes ${p.sizes[0]}–${p.sizes[p.sizes.length - 1]}`;
+    return `<a class="ev-card" href="product.html?id=${p.id}">
+      <div class="ev-media"><span class="ev-cat">${esc(p.category)}</span>${productArt(p)}</div>
+      <div class="ev-title">${esc(p.name)}</div>
+      <div class="ev-meta">${p.badge ? `<span class="ev-flag">${esc(p.badge)}</span> · ` : ""}${esc(sizes)}</div>
+      <div class="ev-price solo"><b>${fmt(p.price)}</b></div>
     </a>`;
   }
 
@@ -321,10 +317,12 @@
     </header>`;
 
     // mobile menu
-    $("#menu-btn").addEventListener("click", () => {
-      const m = $("#mobile-menu"); const open = m.classList.toggle("open");
-      $("#menu-btn").innerHTML = icon(open ? "close" : "menu");
-    });
+    // phone menu drops down OVER the page (doesn't push it down); tap outside to close
+    const mm = $("#mobile-menu"), mb = $("#menu-btn");
+    const setMenu = (open) => { mm.classList.toggle("open", open); mb.innerHTML = icon(open ? "close" : "menu"); mb.setAttribute("aria-expanded", open); };
+    mb.addEventListener("click", (ev) => { ev.stopPropagation(); setMenu(!mm.classList.contains("open")); });
+    document.addEventListener("click", (ev) => { if (mm.classList.contains("open") && !mm.contains(ev.target)) setMenu(false); });
+    window.addEventListener("resize", () => { if (innerWidth > 1024) setMenu(false); });
     // user dropdown: opens on hover (CSS) + click/tap for touch screens
     const um = $("#user-menu");
     $("#user-btn").addEventListener("click", (ev) => { ev.stopPropagation(); um.classList.toggle("open"); });
