@@ -709,9 +709,9 @@ a.contact-item:hover { border-color: rgba(255,46,147,.4); }
    the letters (R, E, P, B), the same look as the Rada Republic poster. */
 .hero-title { margin: 22px 0 28px; font-family: "Roboto", "Inter", sans-serif; text-transform: uppercase; font-weight: 900; line-height: .9; width: fit-content; max-width: 100%; }
 .hero-title span { display: block; }
-.hero-title .solid { font-size: clamp(30px, 4.15vw, 62px); letter-spacing: -.01em; margin-bottom: .14em;
-  /* gold sampled from the logo seal: highlight → mid gold → deep shade → highlight, like polished metal */
-  color: #e3bb69;
+.hero-title .solid { font-size: clamp(30px, 4.15vw, 62px); color: #fff; letter-spacing: -.01em; margin-bottom: .14em; }
+/* "WELCOME" in gold sampled from the logo seal: highlight → mid gold → deep shade → highlight, like polished metal */
+.hero-title .solid .gold { display: inline; color: #e3bb69;
   background: linear-gradient(180deg, #fce9b0 0%, #f2d58c 22%, #d8ac5a 48%, #b2843f 62%, #e3bb69 80%, #fce9b0 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 10px rgba(216, 172, 90, .25)); }
