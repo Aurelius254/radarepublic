@@ -1,5 +1,9 @@
 # Rada Republic — Tickets & Merch (front-end prototype)
 
+**Live site:** https://aurelius254.github.io/radarepublic/
+
+To update it: commit your changes and `git push`. GitHub Pages republishes automatically in about a minute.
+
 Static HTML/CSS/JS. There's no build step.
 
 ## Run it
