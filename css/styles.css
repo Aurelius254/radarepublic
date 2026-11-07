@@ -718,24 +718,34 @@ a.contact-item:hover { border-color: rgba(255,46,147,.4); }
   .hero-title .outline { font-size: clamp(52px, 19vw, 118px); -webkit-text-stroke-width: 2px; }
 }
 
+/* REPUBLIC types itself out on load (letters are revealed one by one by js; space is reserved so nothing jumps) */
+html.tw .hero-title .outline { visibility: hidden; }
+.hero-title .outline.tw-ready { visibility: visible; position: relative; }
+.hero-title .outline .tw-l { display: inline; visibility: hidden; }
+.hero-title .outline .tw-l.on { visibility: visible; }
+.hero-title .outline .tw-caret { display: block; position: absolute; top: .1em; width: .055em; min-width: 3px; height: .78em; border-radius: 2px;
+  background: #e3bb69; box-shadow: 0 0 12px rgba(227, 187, 105, .7); transform: translateX(.06em); transition: left .05s; }  /* solid while typing */
+.hero-title .outline .tw-caret.done { animation: caretBlink .8s steps(1) 3, fadeOut .3s ease 2.4s forwards; }
+@keyframes caretBlink { 50% { opacity: 0; } }
+
 /* "Huna rada? Tuko na form." — Rada Republic texting the visitor */
 .rada-chat { margin: 0 0 28px; width: fit-content; max-width: 100%; }
 .chat-msgs { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-.chat-from { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px 4px; }
+.chat-from { opacity: 0; animation: fadeIn .3s ease 1.4s forwards; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px 4px; }
 .bubble { position: relative; padding: 11px 20px 12px; border-radius: 22px; font-family: "Roboto", "Inter", sans-serif; font-weight: 900; font-style: italic; font-size: clamp(21px, 2.3vw, 28px); letter-spacing: -.01em; line-height: 1.15; text-transform: uppercase;
   opacity: 0; transform: translateY(10px) scale(.95); transform-origin: left bottom; animation: bubbleIn .45s cubic-bezier(.2, .9, .3, 1.25) forwards; }
-.bubble.ask { background: rgba(255,255,255,.08); border: 1px solid var(--border-2); border-bottom-left-radius: 6px; animation-delay: .3s; }
-.bubble.reply { background: var(--grad); border-top-left-radius: 6px; box-shadow: 0 14px 34px -12px rgba(255,46,147,.75); animation-delay: .95s; display: grid; }
+.bubble.ask { background: rgba(255,255,255,.08); border: 1px solid var(--border-2); border-bottom-left-radius: 6px; animation-delay: 1.45s; }
+.bubble.reply { background: var(--grad); border-top-left-radius: 6px; box-shadow: 0 14px 34px -12px rgba(255,46,147,.75); animation-delay: 2.1s; display: grid; }
 .bubble.reply > * { grid-area: 1 / 1; }
-.bubble .msg { opacity: 0; animation: fadeIn .3s ease 2.05s forwards; }
-.typing { display: inline-flex; gap: 5px; align-items: center; align-self: center; animation: fadeOut .2s ease 1.95s forwards; }
+.bubble .msg { opacity: 0; animation: fadeIn .3s ease 3.2s forwards; }
+.typing { display: inline-flex; gap: 5px; align-items: center; align-self: center; animation: fadeOut .2s ease 3.1s forwards; }
 .typing i { width: 7px; height: 7px; border-radius: 50%; background: #fff; opacity: .5; animation: typingDot 1s infinite; }
 .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
 @keyframes bubbleIn { to { opacity: 1; transform: none; } }
 @keyframes fadeIn { to { opacity: 1; } }
 @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 @keyframes typingDot { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .bubble, .bubble .msg { opacity: 1; transform: none; } .typing { display: none; } }
+@media (prefers-reduced-motion: reduce) { .bubble, .bubble .msg, .chat-from { opacity: 1; transform: none; } .typing { display: none; } }
 
 /* ---------- Event cards: banner image, details underneath ---------- */
 .ev-grid { display: grid; gap: 40px 22px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }

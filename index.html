@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
+  <script>if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("tw");</script>
 </head>
 <body class="home" data-page="home">
   <div id="site-header"></div>
@@ -111,6 +112,31 @@
   <script src="js/app.js"></script>
   <script src="js/feature.js"></script>
   <script>
+    // Typewriter: REPUBLIC types itself out with a blinking gold cursor
+    (function () {
+      const el = document.querySelector(".hero-title .outline");
+      if (!el || !document.documentElement.classList.contains("tw")) return;
+      const word = el.textContent;
+      el.setAttribute("aria-label", word);
+      el.innerHTML = [...word].map((c) => `<span class="tw-l" aria-hidden="true">${c}</span>`).join("") + '<span class="tw-caret" aria-hidden="true"></span>';
+      const letters = [...el.querySelectorAll(".tw-l")], caret = el.querySelector(".tw-caret");
+      const place = (i) => { const l = letters[i]; caret.style.left = (i < 0 ? 0 : l.offsetLeft + l.offsetWidth) + "px"; };
+      let started = false;
+      const start = () => {
+        if (started) return; started = true;
+        place(-1); el.classList.add("tw-ready");
+        let i = 0;
+        const next = () => {
+          letters[i].classList.add("on"); place(i); i++;
+          if (i < letters.length) setTimeout(next, 95 + Math.random() * 60);   // slightly uneven, like real typing
+          else caret.classList.add("done");
+        };
+        setTimeout(next, 280);
+      };
+      (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(start);
+      setTimeout(start, 1500);   // safety net if fonts are slow
+    })();
+
     (function () {
       const ev = RR.upcomingEvents();
       // hero poster stack
