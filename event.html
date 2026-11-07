@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="events">
+  <div id="site-header"></div>
+  <main class="container" id="root"></main>
+  <section class="container" id="more" style="padding-bottom:96px"></section>
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    (function () {
+      const { $, $$, icon, esc, fmt, fmtDate, fmtTime } = RR;
+      const e = RR.getEvent(RR.qs("id"));
+      if (!e) {
+        $("#root").innerHTML = `<div class="empty"><div class="em-ic">${icon("ticket")}</div><h2>Event not found</h2><p>It may have ended or the link is wrong.</p><div class="actions"><a class="btn btn-primary" href="events.html">Browse events</a></div></div>`;
+        return;
+      }
+      document.title = `${e.title} · Rada Republic`;
+      const qty = {}; e.tiers.forEach((t) => (qty[t.name] = 0));
+      const firstOpen = e.tiers.find((t) => !t.soldOut); if (firstOpen) qty[firstOpen.name] = 1;
+
+      $("#root").innerHTML = `
+        <div class="detail">
+          <div class="detail-media">${RR.poster(e, "lg")}</div>
+          <div>
+            <div class="crumbs"><a href="index.html">Home</a>/<a href="events.html">Events</a>/<span>${esc(e.category)}</span></div>
+            <span class="tag pink">${esc(e.category)}</span>
+            <h1>${esc(e.title)}</h1>
+            <div class="chips">
+              <span class="chip">${icon("cal")} ${esc(fmtDate(e.date))}</span>
+              <span class="chip">${icon("clock")} Doors ${esc(fmtTime(e.date))}</span>
+              <span class="chip">${icon("pin")} ${esc(e.venue)}, ${esc(e.city)}</span>
+            </div>
+            <p class="about">${esc(e.desc)}</p>
+
+            <div class="block-title">Lineup</div>
+            <div class="lineup">${(e.lineup || []).map((l) => `<span class="chip">${icon("spark")} ${esc(l)}</span>`).join("")}</div>
+
+            <div class="block-title">Choose tickets</div>
+            <div class="tiers" id="tiers"></div>
+            <div class="buy-bar">
+              <div class="total">Total<b id="total">KES 0</b></div>
+              <div class="actions">
+                <button class="btn btn-ghost" id="add">${icon("cart")} Add to cart</button>
+                <button class="btn btn-primary" id="buy">Buy now ${icon("arrow")}</button>
+              </div>
+            </div>
+            <div class="perks">
+              <div>${icon("mail")} QR ticket emailed instantly</div>
+              <div>${icon("mobile")} Pay with M-Pesa</div>
+              <div>${icon("user")} No account needed</div>
+              <div>${icon("shield")} Secure, verified entry</div>
+            </div>
+
+            <div class="block-title">Venue</div>
+            <a class="map-box" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.venue + ", " + e.city)}">
+              ${icon("pin")}<div><b>${esc(e.venue)}</b><div class="muted" style="font-size:14px">${esc(e.city)}, Kenya · Open in Google Maps</div></div></a>
+          </div>
+        </div>`;
+
+      function renderTiers() {
+        $("#tiers").innerHTML = e.tiers.map((t, i) => `
+          <div class="tier ${t.soldOut ? "sold" : ""} ${qty[t.name] ? "has-qty" : ""}">
+            <div><b>${esc(t.name)}</b>${t.note ? `<small>${esc(t.note)}</small>` : ""}</div>
+            <div style="display:flex;align-items:center;gap:16px">
+              <span class="t-price">${t.soldOut ? "Sold out" : fmt(t.price)}</span>
+              ${t.soldOut ? "" : `<div class="stepper"><button data-i="${i}" data-d="-1" ${qty[t.name] ? "" : "disabled"} aria-label="Fewer">−</button><span>${qty[t.name]}</span><button data-i="${i}" data-d="1" ${qty[t.name] >= 10 ? "disabled" : ""} aria-label="More">+</button></div>`}
+            </div>
+          </div>`).join("");
+        const total = e.tiers.reduce((s, t) => s + qty[t.name] * t.price, 0);
+        $("#total").textContent = fmt(total);
+        $("#add").disabled = $("#buy").disabled = total === 0;
+      }
+      $("#tiers").addEventListener("click", (ev) => {
+        const b = ev.target.closest("button[data-i]"); if (!b) return;
+        const t = e.tiers[+b.dataset.i]; qty[t.name] = Math.max(0, Math.min(10, qty[t.name] + +b.dataset.d)); renderTiers();
+      });
+      function add() {
+        let n = 0;
+        e.tiers.forEach((t) => { if (qty[t.name]) { RR.addToCart({ type: "ticket", id: e.id, variant: t.name, name: e.title, price: t.price, qty: qty[t.name] }); n += qty[t.name]; } });
+        return n;
+      }
+      $("#add").addEventListener("click", () => { const n = add(); if (n) RR.toast(`${n} ticket${n > 1 ? "s" : ""} added to cart.`, "ok", ' <a href="cart.html">View cart</a>'); });
+      $("#buy").addEventListener("click", () => { if (add()) location.href = "checkout.html"; });
+      renderTiers();
+
+      const more = RR.upcomingEvents().filter((x) => x.id !== e.id).slice(0, 4);
+      $("#more").innerHTML = `<div class="section-head"><h2 class="h2" style="font-size:30px">More events</h2><a class="see-all" href="events.html">See all ${icon("arrow")}</a></div><div class="row4">${more.map(RR.eventCard).join("")}</div>`;
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Merch · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="merch">
+  <div id="site-header"></div>
+  <main class="container" id="root"></main>
+  <section class="container" id="more" style="padding-bottom:96px"></section>
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    (function () {
+      const { $, $$, icon, esc, fmt } = RR;
+      const p = RR.getProduct(RR.qs("id"));
+      if (!p) {
+        $("#root").innerHTML = `<div class="empty"><div class="em-ic">${icon("bag")}</div><h2>Product not found</h2><p>It may have sold out or the link is wrong.</p><div class="actions"><a class="btn btn-primary" href="merch.html">Shop merch</a></div></div>`;
+        return;
+      }
+      document.title = `${p.name} · Rada Republic`;
+      let size = p.sizes.length === 1 ? p.sizes[0] : null, qty = 1;
+
+      $("#root").innerHTML = `
+        <div class="detail">
+          <div class="detail-media square">${RR.productArt(p)}</div>
+          <div>
+            <div class="crumbs"><a href="index.html">Home</a>/<a href="merch.html">Merch</a>/<a href="merch.html?cat=${encodeURIComponent(p.category)}">${esc(p.category)}</a></div>
+            ${p.badge ? `<span class="tag pink">${esc(p.badge)}</span>` : `<span class="tag">${esc(p.category)}</span>`}
+            <h1>${esc(p.name)}</h1>
+            <div style="font-size:26px;font-weight:800">${fmt(p.price)}</div>
+            <p class="about">${esc(p.desc)}</p>
+
+            <div class="block-title">Size ${size && p.sizes.length === 1 ? "" : '<span style="color:var(--pink)">*</span>'}</div>
+            <div class="size-opts" id="sizes">${p.sizes.map((s) => `<button data-s="${esc(s)}">${esc(s)}</button>`).join("")}</div>
+            <p class="err-msg" id="size-err" style="margin-top:8px">Pick a size first.</p>
+
+            <div class="block-title">Quantity</div>
+            <div class="stepper" id="qty"><button data-d="-1" aria-label="Fewer">−</button><span>1</span><button data-d="1" aria-label="More">+</button></div>
+
+            <div class="buy-bar">
+              <div class="total">Total<b id="total">${fmt(p.price)}</b></div>
+              <div class="actions">
+                <button class="btn btn-ghost" id="add">${icon("cart")} Add to cart</button>
+                <button class="btn btn-primary" id="buy">Buy now ${icon("arrow")}</button>
+              </div>
+            </div>
+            <div class="perks">
+              <div>${icon("truck")} Delivery countrywide, 1–3 days</div>
+              <div>${icon("mobile")} Pay with M-Pesa</div>
+              <div>${icon("user")} No account needed</div>
+              <div>${icon("shield")} Official Rada Republic merch</div>
+            </div>
+          </div>
+        </div>`;
+
+      const renderSizes = () => $$("#sizes button").forEach((b) => b.classList.toggle("active", b.dataset.s === size));
+      $("#sizes").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; size = b.dataset.s; $("#size-err").style.display = "none"; renderSizes(); });
+      $("#qty").addEventListener("click", (e) => {
+        const b = e.target.closest("button"); if (!b) return;
+        qty = Math.max(1, Math.min(10, qty + +b.dataset.d));
+        $("#qty span").textContent = qty; $("#total").textContent = fmt(qty * p.price);
+      });
+      function add() {
+        if (!size) { $("#size-err").style.display = "block"; return false; }
+        RR.addToCart({ type: "merch", id: p.id, variant: size, name: p.name, price: p.price, qty });
+        return true;
+      }
+      $("#add").addEventListener("click", () => { if (add()) RR.toast(`${p.name} (${size}) added to cart.`, "ok", ' <a href="cart.html">View cart</a>'); });
+      $("#buy").addEventListener("click", () => { if (add()) location.href = "checkout.html"; });
+      renderSizes();
+
+      const more = RR_DATA.products.filter((x) => x.id !== p.id).slice(0, 4);
+      $("#more").innerHTML = `<div class="section-head"><h2 class="h2" style="font-size:30px">You might also like</h2><a class="see-all" href="merch.html">See all ${icon("arrow")}</a></div><div class="row4">${more.map(RR.productCard).join("")}</div>`;
+    })();
+  </script>
+</body>
+</html>

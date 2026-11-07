@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Events · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="events">
+  <div id="site-header"></div>
+  <main>
+    <section class="container" style="padding-top:48px">
+      <div id="feature"></div>
+    </section>
+
+    <section class="container" style="padding-top:48px;padding-bottom:96px">
+      <div class="filter-bar">
+        <h2>All Events <small id="count"></small></h2>
+        <button class="btn btn-ghost btn-sm filter-toggle" id="ftoggle" aria-expanded="false" aria-controls="fpanel"></button>
+      </div>
+      <div class="filter-panel" id="fpanel"><div>
+        <div class="filter-inner">
+          <div class="field"><span class="label">Search</span><input class="input" id="f-q" placeholder="Event, venue, city..."></div>
+          <div class="field"><span class="label">Category</span><div class="toggle-group" id="f-cat"></div></div>
+          <div class="field"><span class="label">When</span><div class="toggle-group" id="f-when"></div></div>
+          <div class="field"><span class="label">Sort by</span>
+            <select class="input" id="f-sort">
+              <option value="date">Date: soonest first</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+            </select></div>
+          <div class="span-all"><button class="btn btn-ghost btn-sm" id="f-reset">Reset filters</button></div>
+        </div>
+      </div></div>
+
+      <div class="grid" id="list" style="margin-top:24px"></div>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/feature.js"></script>
+  <script>
+    (function () {
+      const { $, $$, icon, eventCard, esc } = RR;
+      RR.renderFeature($("#feature"), RR.featuredEvent());
+
+      const cats = ["All", ...new Set(RR_DATA.events.map((e) => e.category))];
+      const whens = [["any", "Any time"], ["today", "Today"], ["week", "This week"], ["month", "This month"], ["3m", "Next 3 months"]];
+      const st = { q: RR.qs("q") || "", cat: RR.qs("cat") || "All", when: "any", sort: "date" };
+
+      $("#f-cat").innerHTML = cats.map((c) => `<button data-v="${esc(c)}">${esc(c)}</button>`).join("");
+      $("#f-when").innerHTML = whens.map(([v, l]) => `<button data-v="${v}">${l}</button>`).join("");
+      $("#f-q").value = st.q;
+
+      const panel = $("#fpanel"), tog = $("#ftoggle");
+      const setTog = (open) => { panel.classList.toggle("open", open); tog.classList.toggle("on", open); tog.setAttribute("aria-expanded", open); tog.innerHTML = `${icon(open ? "close" : "sliders")} ${open ? "Close" : "Filters"}`; };
+      setTog(!!st.q || st.cat !== "All");
+      tog.addEventListener("click", () => setTog(!panel.classList.contains("open")));
+
+      function render() {
+        $$("#f-cat button").forEach((b) => b.classList.toggle("active", b.dataset.v === st.cat));
+        $$("#f-when button").forEach((b) => b.classList.toggle("active", b.dataset.v === st.when));
+        const now = new Date(new Date().toDateString());
+        const limit = { week: 7, month: 31, "3m": 92 }[st.when];
+        let list = RR.upcomingEvents().filter((e) => {
+          if (st.cat !== "All" && e.category !== st.cat) return false;
+          if (st.q && ![e.title, e.venue, e.city, e.category, ...(e.lineup || [])].join(" ").toLowerCase().includes(st.q.toLowerCase())) return false;
+          if (st.when === "today" && new Date(e.date).toDateString() !== now.toDateString()) return false;
+          if (limit && (new Date(e.date) - now) / 864e5 > limit) return false;
+          return true;
+        });
+        if (st.sort === "price-asc") list.sort((a, b) => RR.minPrice(a) - RR.minPrice(b));
+        if (st.sort === "price-desc") list.sort((a, b) => RR.minPrice(b) - RR.minPrice(a));
+        $("#count").textContent = `(${list.length})`;
+        $("#list").innerHTML = list.length ? list.map(eventCard).join("") :
+          `<div class="results-empty">${st.when === "today" ? "Nothing on today. Check out what's coming up this week." : "No events match those filters."}<br><button class="link" style="margin-top:10px" onclick="document.getElementById('f-reset').click()">Clear filters</button></div>`;
+      }
+      $("#f-cat").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { st.cat = b.dataset.v; render(); } });
+      $("#f-when").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { st.when = b.dataset.v; render(); } });
+      $("#f-q").addEventListener("input", (e) => { st.q = e.target.value.trim(); render(); });
+      $("#f-sort").addEventListener("change", (e) => { st.sort = e.target.value; render(); });
+      $("#f-reset").addEventListener("click", () => { Object.assign(st, { q: "", cat: "All", when: "any", sort: "date" }); $("#f-q").value = ""; $("#f-sort").value = "date"; render(); });
+      render();
+    })();
+  </script>
+</body>
+</html>

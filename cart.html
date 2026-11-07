@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cart · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="cart">
+  <div id="site-header"></div>
+  <main class="container">
+    <div class="page-head"><span class="eyebrow">Your bag</span><h1 class="h2" style="margin-top:8px">Cart</h1></div>
+    <div id="root"></div>
+  </main>
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    (function () {
+      const { $, icon, esc, fmt } = RR;
+      function render() {
+        const c = RR.cart();
+        if (!c.length) {
+          $("#root").innerHTML = `<div class="empty"><div class="em-ic">${icon("cart")}</div><h2>Your cart is empty</h2><p>Grab tickets to the next big night or some fresh merch.</p>
+            <div class="actions"><a class="btn btn-primary" href="events.html">Explore Events</a><a class="btn btn-ghost" href="merch.html">Shop Merch</a></div></div>`;
+          return;
+        }
+        const tickets = c.filter((x) => x.type === "ticket"), merch = c.filter((x) => x.type === "merch");
+        const group = (title, items) => !items.length ? "" : `<div class="panel"><div class="panel-title"><h3>${title}</h3></div>${items.map(line).join("")}</div>`;
+        $("#root").innerHTML = `<div class="two-col">
+          <div>${group("Tickets", tickets)}${group("Merch", merch)}</div>
+          <aside class="summary panel">
+            <h3 class="h3" style="margin-bottom:16px">Summary</h3>
+            <div class="sum-row"><span>Items (${RR.cartCount()})</span><span>${fmt(RR.cartSubtotal())}</span></div>
+            ${merch.length ? `<div class="sum-row"><span>Delivery</span><span>Calculated at checkout</span></div>` : ""}
+            <div class="sum-row total"><span>Subtotal</span><span>${fmt(RR.cartSubtotal())}</span></div>
+            <a class="btn btn-primary btn-block btn-lg" style="margin-top:18px" href="checkout.html">Checkout ${icon("arrow")}</a>
+            <p class="secure">${icon("shield")} No account needed · Pay with M-Pesa</p>
+          </aside></div>`;
+      }
+      const line = (x) => {
+        const href = x.type === "ticket" ? `event.html?id=${x.id}` : `product.html?id=${x.id}`;
+        return `<div class="line">
+          <a class="line-thumb" href="${href}">${RR.cartThumb(x)}</a>
+          <div><a href="${href}"><b>${esc(x.name)}</b></a><small>${x.type === "ticket" ? "Ticket" : "Size"}: ${esc(x.variant)} · ${fmt(x.price)} each</small>
+            <div class="line-actions"><div class="stepper"><button data-k="${esc(x.key)}" data-d="-1" ${x.qty <= 1 ? "disabled" : ""}>−</button><span>${x.qty}</span><button data-k="${esc(x.key)}" data-d="1">+</button></div>
+            <button class="rm" data-rm="${esc(x.key)}">Remove</button></div></div>
+          <div class="lp">${fmt(x.qty * x.price)}</div></div>`;
+      };
+      $("#root").addEventListener("click", (e) => {
+        const b = e.target.closest("button"); if (!b) return;
+        if (b.dataset.rm) RR.removeItem(b.dataset.rm);
+        if (b.dataset.k) { const it = RR.cart().find((x) => x.key === b.dataset.k); if (it) RR.setQty(it.key, it.qty + +b.dataset.d); }
+      });
+      document.addEventListener("rr:cart", render);
+      render();
+    })();
+  </script>
+</body>
+</html>

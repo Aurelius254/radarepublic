@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Merch · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="merch">
+  <div id="site-header"></div>
+  <main>
+    <section class="container page-head" style="position:relative">
+      <span class="glow pink" style="width:300px;height:300px;right:0;top:-60px;opacity:.18"></span>
+      <span class="eyebrow">Official store</span>
+      <h1 class="h1" style="margin-top:10px;font-size:clamp(36px,5vw,56px)">Wear the <span class="grad-text">Republic.</span></h1>
+      <p class="lead">Limited drops, heavyweight fits. Delivered anywhere in Kenya. Pay with M-Pesa, no account needed.</p>
+    </section>
+
+    <section class="container" style="padding-bottom:96px">
+      <div class="filter-bar">
+        <h2>All Products <small id="count"></small></h2>
+        <button class="btn btn-ghost btn-sm filter-toggle" id="ftoggle" aria-expanded="false" aria-controls="fpanel"></button>
+      </div>
+      <div class="filter-panel" id="fpanel"><div>
+        <div class="filter-inner">
+          <div class="field"><span class="label">Search</span><input class="input" id="f-q" placeholder="Tee, hoodie, cap..."></div>
+          <div class="field"><span class="label">Category</span><div class="toggle-group" id="f-cat"></div></div>
+          <div class="field"><span class="label">Price</span><div class="toggle-group" id="f-price"></div></div>
+          <div class="field"><span class="label">Sort by</span>
+            <select class="input" id="f-sort">
+              <option value="featured">Featured</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+              <option value="name">Name A–Z</option>
+            </select></div>
+          <div class="span-all"><button class="btn btn-ghost btn-sm" id="f-reset">Reset filters</button></div>
+        </div>
+      </div></div>
+
+      <div class="grid" id="list" style="margin-top:24px"></div>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    (function () {
+      const { $, $$, icon, productCard, esc } = RR;
+      const P = RR_DATA.products;
+      const cats = ["All", ...new Set(P.map((p) => p.category))];
+      const prices = [["any", "Any"], ["u2", "Under 2,000"], ["2to4", "2,000 – 4,000"], ["o4", "4,000+"]];
+      const st = { q: RR.qs("q") || "", cat: RR.qs("cat") || "All", price: "any", sort: "featured" };
+
+      $("#f-cat").innerHTML = cats.map((c) => `<button data-v="${esc(c)}">${esc(c)}</button>`).join("");
+      $("#f-price").innerHTML = prices.map(([v, l]) => `<button data-v="${v}">${l}</button>`).join("");
+      $("#f-q").value = st.q;
+
+      const panel = $("#fpanel"), tog = $("#ftoggle");
+      const setTog = (open) => { panel.classList.toggle("open", open); tog.classList.toggle("on", open); tog.setAttribute("aria-expanded", open); tog.innerHTML = `${icon(open ? "close" : "sliders")} ${open ? "Close" : "Filters"}`; };
+      setTog(!!st.q || st.cat !== "All");
+      tog.addEventListener("click", () => setTog(!panel.classList.contains("open")));
+
+      const inPrice = (p) => ({ any: true, u2: p.price < 2000, "2to4": p.price >= 2000 && p.price <= 4000, o4: p.price > 4000 }[st.price]);
+      function render() {
+        $$("#f-cat button").forEach((b) => b.classList.toggle("active", b.dataset.v === st.cat));
+        $$("#f-price button").forEach((b) => b.classList.toggle("active", b.dataset.v === st.price));
+        let list = P.filter((p) => (st.cat === "All" || p.category === st.cat) && inPrice(p) && (!st.q || [p.name, p.category].join(" ").toLowerCase().includes(st.q.toLowerCase())));
+        if (st.sort === "price-asc") list = [...list].sort((a, b) => a.price - b.price);
+        if (st.sort === "price-desc") list = [...list].sort((a, b) => b.price - a.price);
+        if (st.sort === "name") list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+        $("#count").textContent = `(${list.length})`;
+        $("#list").innerHTML = list.length ? list.map(productCard).join("") :
+          `<div class="results-empty">Nothing matches those filters.<br><button class="link" style="margin-top:10px" onclick="document.getElementById('f-reset').click()">Clear filters</button></div>`;
+      }
+      $("#f-cat").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { st.cat = b.dataset.v; render(); } });
+      $("#f-price").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { st.price = b.dataset.v; render(); } });
+      $("#f-q").addEventListener("input", (e) => { st.q = e.target.value.trim(); render(); });
+      $("#f-sort").addEventListener("change", (e) => { st.sort = e.target.value; render(); });
+      $("#f-reset").addEventListener("click", () => { Object.assign(st, { q: "", cat: "All", price: "any", sort: "featured" }); $("#f-q").value = ""; $("#f-sort").value = "featured"; render(); });
+      render();
+    })();
+  </script>
+</body>
+</html>

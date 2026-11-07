@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Profile · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="profile">
+  <div id="site-header"></div>
+  <main class="container" id="root"></main>
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/account.js"></script>
+  <script>
+    (function () {
+      const { $, icon, esc, fmt } = RR;
+      function render() {
+        const u = RR.currentUser();
+        if (!u) return RR.signedOut($("#root"), "Sign in to see your profile");
+        const tix = RR.userTickets(u), orders = RR.userOrders(u);
+        const upcoming = tix.filter((t) => new Date(RR.getEvent(t.eventId).date) >= new Date()).length;
+        const spent = orders.reduce((s, o) => s + o.total, 0);
+        const since = new Date(u.joined).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+        $("#root").innerHTML = `
+          <div class="page-head profile-head">
+            <div class="big-avatar">${esc(RR.initials(u.name))}</div>
+            <div><span class="eyebrow">My profile</span><h1 class="h2" style="margin-top:4px">${esc(u.name)}</h1><p class="muted">Member since ${since}</p></div>
+          </div>
+          <div class="acct">
+            ${RR.accountNav("profile")}
+            <div>
+              <div class="profile-stats">
+                <div class="stat"><b class="grad-text">${upcoming}</b><span>Upcoming tickets</span></div>
+                <div class="stat"><b class="grad-text">${orders.length}</b><span>Orders</span></div>
+                <div class="stat"><b class="grad-text">${fmt(spent)}</b><span>Total spent</span></div>
+              </div>
+
+              <form class="panel" id="pf" novalidate>
+                <div class="panel-title"><span class="num">${icon("user")}</span><div><h3>Personal details</h3><p>Used to prefill checkout and send your tickets.</p></div></div>
+                <div class="form-grid">
+                  <div class="field" data-f="p-name"><label class="label" for="p-name">Full name</label><input class="input" id="p-name" value="${esc(u.name)}"><span class="err-msg">Enter your full name</span></div>
+                  <div class="field" data-f="p-email"><label class="label" for="p-email">Email</label><input class="input" id="p-email" type="email" value="${esc(u.email)}"><span class="err-msg">Enter a valid email</span></div>
+                  ${RR.phoneField("p-phone", "Phone", RR.prettyPhone(u.phone))}
+                  <div class="field"><label class="label" for="p-city">Town / city</label><input class="input" id="p-city" value="${esc(u.city || "")}" placeholder="e.g. Nairobi"></div>
+                  <div class="field"><label class="label" for="p-dob">Date of birth</label><input class="input" id="p-dob" type="date" value="${esc(u.dob || "")}" style="color-scheme:dark"></div>
+                  <div class="field"><label class="label" for="p-gender">Gender</label><select class="input" id="p-gender">
+                    ${["", "Female", "Male", "Non-binary", "Prefer not to say"].map((g) => `<option value="${g}" ${u.gender === g ? "selected" : ""}>${g || "Select…"}</option>`).join("")}</select></div>
+                </div>
+                <button class="btn btn-primary" type="submit" style="margin-top:22px">Save changes</button>
+              </form>
+
+              <form class="panel" id="pw" novalidate>
+                <div class="panel-title"><span class="num">${icon("lock")}</span><div><h3>Change password</h3><p>At least 8 characters.</p></div></div>
+                <div class="form-grid">
+                  <div class="field" data-f="pw-old"><label class="label" for="pw-old">Current password</label><input class="input" id="pw-old" type="password" autocomplete="current-password"><span class="err-msg">Current password is incorrect</span></div>
+                  <div class="field" data-f="pw-new"><label class="label" for="pw-new">New password</label><input class="input" id="pw-new" type="password" autocomplete="new-password"><span class="err-msg">Use at least 8 characters</span></div>
+                </div>
+                <button class="btn btn-ghost" type="submit" style="margin-top:22px">Update password</button>
+              </form>
+            </div>
+          </div>`;
+
+        RR.wireAccountNav();
+        $("#pf").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const f = e.target;
+          const errs = { "p-name": $("#p-name").value.trim().length < 2, "p-email": !RR.validEmail($("#p-email").value), "p-phone": !RR.validPhone($("#p-phone").value) };
+          Object.entries(errs).forEach(([k, b]) => RR.fieldErr(f, k, b));
+          if (Object.values(errs).some(Boolean)) return;
+          // BACKEND: PATCH /api/me
+          RR.updateUser({ name: $("#p-name").value.trim(), email: $("#p-email").value.trim(), phone: RR.normPhone($("#p-phone").value), city: $("#p-city").value.trim(), dob: $("#p-dob").value, gender: $("#p-gender").value });
+          RR.toast("Profile updated.", "ok");
+        });
+        $("#pw").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const f = e.target, cur = RR.currentUser();
+          const errs = { "pw-old": $("#pw-old").value !== cur.password, "pw-new": $("#pw-new").value.length < 8 };
+          Object.entries(errs).forEach(([k, b]) => RR.fieldErr(f, k, b));
+          if (Object.values(errs).some(Boolean)) return;
+          RR.updateUser({ password: $("#pw-new").value });
+          RR.toast("Password updated.", "ok");
+        });
+      }
+      document.addEventListener("rr:auth", render);
+      render();
+    })();
+  </script>
+</body>
+</html>

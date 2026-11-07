@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Tickets · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="tickets">
+  <div id="site-header"></div>
+  <main class="container" id="root"></main>
+  <div id="site-footer"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/account.js"></script>
+  <script>
+    (function () {
+      const { $, $$, icon, esc, fmt } = RR;
+      let tab = "upcoming";
+      function render() {
+        const u = RR.currentUser();
+        if (!u) return RR.signedOut($("#root"), "Sign in to see your tickets");
+        const now = new Date();
+        const all = RR.userTickets(u).map((t) => ({ ...t, e: RR.getEvent(t.eventId) })).filter((t) => t.e).sort((a, b) => new Date(a.e.date) - new Date(b.e.date));
+        const up = all.filter((t) => new Date(t.e.date) >= now), past = all.filter((t) => new Date(t.e.date) < now).reverse();
+        const list = tab === "upcoming" ? up : past;
+
+        $("#root").innerHTML = `
+          <div class="page-head"><span class="eyebrow">Hi ${esc(u.name.split(" ")[0])}</span><h1 class="h2" style="margin-top:6px">My Tickets</h1>
+            <p class="lead">Show the QR code at the gate. A copy was also emailed to ${esc(u.email)}.</p></div>
+          <div class="acct">
+            ${RR.accountNav("tickets")}
+            <div>
+              <div class="tabs"><button data-tab="upcoming" class="${tab === "upcoming" ? "active" : ""}">Upcoming (${up.length})</button><button data-tab="past" class="${tab === "past" ? "active" : ""}">Past (${past.length})</button></div>
+              ${list.length ? list.map((t) => card(t, tab === "past")).join("") :
+                `<div class="empty" style="padding:48px 20px"><div class="em-ic">${icon("ticket")}</div><h2>${tab === "upcoming" ? "No upcoming tickets" : "No past events yet"}</h2><p>${tab === "upcoming" ? "Your next night out is a few taps away." : "Events you've attended will show up here."}</p><div class="actions"><a class="btn btn-primary" href="events.html">Explore Events</a></div></div>`}
+            </div>
+          </div>`;
+        RR.wireAccountNav();
+        $$("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; render(); }));
+        $$("[data-show]").forEach((b) => b.addEventListener("click", () => showQR(all.find((t) => t.code === b.dataset.show))));
+      }
+      const card = (t, past) => `<div class="ticket">
+          <a class="ticket-media" href="event.html?id=${t.e.id}">${RR.poster(t.e)}</a>
+          <div class="ticket-body">
+            <div><span class="status ${past ? "past" : ""}">${past ? "Attended" : "Valid"}</span> <span class="tag pink" style="margin-left:6px">${esc(t.tier)}</span></div>
+            <h3>${esc(t.e.title)}</h3>
+            <div class="ticket-meta">
+              <span>${icon("cal")} ${esc(RR.fmtDate(t.e.date))}</span>
+              <span>${icon("clock")} ${esc(RR.fmtTime(t.e.date))}</span>
+              <span>${icon("pin")} ${esc(t.e.venue)}</span>
+            </div>
+            <div class="ticket-meta"><span>Order ${esc(t.orderId)}</span><span>${fmt(t.price)}</span></div>
+          </div>
+          <div class="ticket-stub">
+            <span class="ticket-code">${esc(t.code)}</span>
+            ${past ? "" : `<button class="btn btn-primary btn-sm" data-show="${esc(t.code)}">${icon("qr")} Show QR</button>`}
+          </div>
+        </div>`;
+      function showQR(t) {
+        const o = RR.openModal(`<div style="text-align:center">
+          <span class="tag pink">${esc(t.tier)}</span>
+          <h2 style="margin-top:10px">${esc(t.e.title)}</h2>
+          <p class="sub">${esc(RR.fmtDate(t.e.date))} · ${esc(RR.fmtTime(t.e.date))}<br>${esc(t.e.venue)}</p>
+          <div class="qr-box" id="qr" style="width:240px;height:240px;margin:0 auto"></div>
+          <p class="ticket-code" style="margin-top:14px">${esc(t.code)}</p>
+          <p class="muted" style="font-size:13px;margin-top:6px">Turn your screen brightness up at the gate.</p></div>`);
+        RR.renderQR($("#qr", o), t.code);
+        $$("#qr img, #qr canvas", o).forEach((x) => x.setAttribute("style", "width:210px;height:210px"));
+      }
+      document.addEventListener("rr:auth", render);
+      render();
+    })();
+  </script>
+</body>
+</html>

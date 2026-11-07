@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="checkout">
+  <div id="site-header"></div>
+  <main class="container">
+    <div class="page-head"><div class="crumbs"><a href="cart.html">Cart</a>/<span>Checkout</span></div><h1 class="h2">Checkout</h1></div>
+    <div id="root"></div>
+  </main>
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    (function () {
+      const { $, $$, icon, esc, fmt } = RR;
+      let zone = RR_DATA.delivery[0].id;
+
+      function render() {
+        const c = RR.cart();
+        if (!c.length) {
+          $("#root").innerHTML = `<div class="empty"><div class="em-ic">${icon("cart")}</div><h2>Nothing to check out</h2><p>Your cart is empty.</p><div class="actions"><a class="btn btn-primary" href="events.html">Explore Events</a><a class="btn btn-ghost" href="merch.html">Shop Merch</a></div></div>`;
+          return;
+        }
+        const u = RR.currentUser();
+        const hasT = c.some((x) => x.type === "ticket"), hasM = c.some((x) => x.type === "merch");
+        let n = 0; const step = () => ++n;
+        const v = (id) => (($("#" + id) || {}).value) || "";
+        const keep = { name: v("co-name") || (u ? u.name : ""), email: v("co-email") || (u ? u.email : ""), phone: v("co-phone") || (u ? RR.prettyPhone(u.phone) : ""), mpesa: v("co-mpesa") || (u ? RR.prettyPhone(u.phone) : "") };
+
+        $("#root").innerHTML = `<div class="two-col"><form id="co-form" novalidate>
+          ${u ? `<div class="guest-note">${icon("user")}<div>Signed in as <b>${esc(u.name)}</b>. Your tickets will also appear in <a class="link" href="tickets.html">My Tickets</a>.</div></div>`
+              : `<div class="guest-note">${icon("info")}<div><b>No account needed.</b> Check out as a guest${hasT ? ", and your QR tickets will be emailed to you" : ""}. Already have an account? <button type="button" class="link" id="co-login">Log in</button></div></div>`}
+
+          <div class="panel">
+            <div class="panel-title"><span class="num">${step()}</span><div><h3>Your details</h3><p>${hasT ? "We'll send your QR ticket(s) to this email." : "We'll send your receipt here."}</p></div></div>
+            <div class="form-grid">
+              <div class="field" data-f="co-name"><label class="label" for="co-name">Full name<span class="req">*</span></label><input class="input" id="co-name" value="${esc(keep.name)}" placeholder="Your name" autocomplete="name"><span class="err-msg">Enter your full name</span></div>
+              <div class="field" data-f="co-email"><label class="label" for="co-email">Email address<span class="req">*</span></label><input class="input" id="co-email" type="email" value="${esc(keep.email)}" placeholder="you@example.com" autocomplete="email"><span class="err-msg">Enter a valid email, since this is where your ${hasT ? "tickets go" : "receipt goes"}</span></div>
+            </div>
+          </div>
+
+          ${hasM ? `<div class="panel">
+            <div class="panel-title"><span class="num">${step()}</span><div><h3>Delivery address</h3><p>Where should we deliver your merch?</p></div></div>
+            <div class="form-grid">
+              <div class="field span-2"><span class="label">Delivery zone<span class="req">*</span></span>
+                <div class="toggle-group" id="zones">${RR_DATA.delivery.map((d) => `<button type="button" data-z="${d.id}" class="${d.id === zone ? "active" : ""}">${esc(d.name)} · ${fmt(d.fee)}</button>`).join("")}</div></div>
+              <div class="field" data-f="co-town"><label class="label" for="co-town">Town / city<span class="req">*</span></label><input class="input" id="co-town" placeholder="e.g. Nairobi" value="${esc(v("co-town") || (u && u.city) || "")}"><span class="err-msg">Enter your town or city</span></div>
+              <div class="field" data-f="co-area"><label class="label" for="co-area">Area / estate<span class="req">*</span></label><input class="input" id="co-area" placeholder="e.g. Kilimani" value="${esc(v("co-area"))}"><span class="err-msg">Enter your area or estate</span></div>
+              <div class="field span-2" data-f="co-street"><label class="label" for="co-street">Street, building &amp; house no.<span class="req">*</span></label><input class="input" id="co-street" placeholder="e.g. Argwings Kodhek Rd, Rada Apts, Hse 4B" value="${esc(v("co-street"))}"><span class="err-msg">Enter your street and building</span></div>
+              ${RR.phoneField("co-phone", 'Delivery contact phone<span class="req">*</span>', keep.phone).replace('class="field"', 'class="field"')}
+              <div class="field"><label class="label" for="co-notes">Delivery notes</label><input class="input" id="co-notes" placeholder="Landmark, gate code..." value="${esc(v("co-notes"))}"></div>
+            </div>
+          </div>` : ""}
+
+          <div class="panel">
+            <div class="panel-title"><span class="num">${step()}</span><div><h3>Pay with M-Pesa</h3><p>Enter your M-Pesa number, then confirm the prompt on your phone with your PIN.</p></div></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><span class="mpesa-logo"><i>M</i>M-PESA</span><span class="muted" style="font-size:13px">STK push · Lipa na M-Pesa</span></div>
+            ${RR.phoneField("co-mpesa", 'M-Pesa number<span class="req">*</span>', keep.mpesa)}
+            <button class="btn btn-mpesa btn-block btn-lg" type="submit" style="margin-top:20px" id="pay">Pay <span id="pay-amt"></span> with M-Pesa</button>
+            <p class="secure">${icon("lock")} You'll get a prompt on your phone. We never see your PIN.</p>
+          </div>
+        </form>
+
+        <aside class="summary panel">
+          <h3 class="h3" style="margin-bottom:16px">Order summary</h3>
+          <div class="sum-items">${c.map((x) => `<div class="sum-item"><span>${x.qty} × ${esc(x.name)} <small class="muted">(${esc(x.variant)})</small></span><span>${fmt(x.qty * x.price)}</span></div>`).join("")}</div>
+          <div class="sum-row"><span>Subtotal</span><span>${fmt(RR.cartSubtotal())}</span></div>
+          ${hasM ? `<div class="sum-row"><span>Delivery</span><span id="del-fee"></span></div>` : ""}
+          <div class="sum-row total"><span>Total</span><span id="grand"></span></div>
+          <a href="cart.html" class="link" style="display:inline-block;margin-top:14px;font-size:14px">Edit cart</a>
+        </aside></div>`;
+
+        const totals = () => {
+          const fee = hasM ? RR_DATA.delivery.find((d) => d.id === zone).fee : 0;
+          if (hasM) $("#del-fee").textContent = fmt(fee);
+          $("#grand").textContent = $("#pay-amt").textContent = fmt(RR.cartSubtotal() + fee);
+          return fee;
+        };
+        totals();
+        if (hasM) $("#zones").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; zone = b.dataset.z; $$("#zones button").forEach((x) => x.classList.toggle("active", x === b)); totals(); });
+        const lb = $("#co-login"); if (lb) lb.addEventListener("click", () => RR.openAuth("login"));
+        // copy the delivery phone into M-Pesa if empty
+        const dp = $("#co-phone"); if (dp) dp.addEventListener("change", () => { if (!$("#co-mpesa").value) $("#co-mpesa").value = dp.value; });
+
+        $("#co-form").addEventListener("submit", (ev) => {
+          ev.preventDefault();
+          const f = $("#co-form");
+          const errs = {
+            "co-name": v("co-name").trim().length < 2,
+            "co-email": !RR.validEmail(v("co-email")),
+            "co-mpesa": !RR.validPhone(v("co-mpesa"))
+          };
+          if (hasM) Object.assign(errs, { "co-town": !v("co-town").trim(), "co-area": !v("co-area").trim(), "co-street": !v("co-street").trim(), "co-phone": !RR.validPhone(v("co-phone")) });
+          Object.entries(errs).forEach(([k, bad]) => RR.fieldErr(f, k, bad));
+          const firstBad = Object.keys(errs).find((k) => errs[k]);
+          if (firstBad) { $("#" + firstBad).focus(); $("#" + firstBad).scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+          const fee = totals();
+          stkPush({
+            items: RR.cart(), deliveryFee: fee, mpesaPhone: v("co-mpesa"),
+            contact: { name: v("co-name").trim(), email: v("co-email").trim(), phone: hasM ? RR.normPhone(v("co-phone")) : RR.normPhone(v("co-mpesa")) },
+            delivery: hasM ? { zone: RR_DATA.delivery.find((d) => d.id === zone).name, town: v("co-town").trim(), area: v("co-area").trim(), street: v("co-street").trim(), notes: v("co-notes").trim(), phone: RR.normPhone(v("co-phone")) } : null
+          }, RR.cartSubtotal() + fee);
+        });
+      }
+
+      /* ---- M-Pesa STK push (SIMULATED) ----
+         BACKEND: POST /api/payments/stk { orderDraft, phone, amount }
+           → server calls Safaricom Daraja STK Push
+           → poll GET /api/payments/:checkoutRequestId (or use websocket)
+           → on success, server issues tickets & emails QR codes. */
+      function stkPush(draft, amount) {
+        let cancelled = false;
+        const o = RR.openModal(`<div class="stk" id="stk">
+            <div class="phone-ill">${icon("mobile")}</div>
+            <h2>Check your phone</h2>
+            <p class="sub">We've sent an M-Pesa prompt for <b style="color:var(--text)">${fmt(amount)}</b> to <b style="color:var(--text)">+254 ${esc(RR.prettyPhone(draft.mpesaPhone).slice(1))}</b>. Enter your M-Pesa PIN to complete payment.</p>
+            <div class="stk-steps">
+              <div class="on" data-s="1"><span class="dot">${icon("check")}</span> Prompt sent to your phone</div>
+              <div data-s="2"><span class="dot"></span> Waiting for you to enter your PIN…</div>
+              <div data-s="3"><span class="dot"></span> Payment confirmed</div>
+            </div>
+            <button class="btn btn-ghost btn-block" id="stk-cancel">Cancel</button>
+            <p class="secure" style="margin-top:14px">Didn't get it? Make sure your phone is on and unlocked.</p>
+          </div>`, { onClose: () => (cancelled = true) });
+        $("#stk-cancel", o).addEventListener("click", () => RR.closeModal());
+        const set = (s, html) => { const el = $(`[data-s="${s}"]`, o); if (!el) return; el.classList.add("on"); $(".dot", el).innerHTML = icon("check"); if (html) el.lastChild.textContent = " " + html; };
+        setTimeout(() => { if (cancelled) return; const el = $('[data-s="2"] .dot', o); if (el) el.innerHTML = '<span class="spinner" style="width:14px;height:14px"></span>'; }, 600);
+        setTimeout(() => {
+          if (cancelled) return;
+          set(2, "PIN entered"); set(3);
+          $("#stk", o).classList.add("done");
+          $("h2", o).textContent = "Payment received!";
+          $("#stk-cancel", o).outerHTML = `<button class="btn btn-primary btn-block" disabled><span class="spinner"></span> Issuing your order…</button>`;
+          const order = RR.createOrder(draft);
+          RR.clearCart();
+          setTimeout(() => { location.href = "order.html?id=" + order.id; }, 1100);
+        }, 4200);
+      }
+
+      document.addEventListener("rr:auth", render);
+      render();
+    })();
+  </script>
+</body>
+</html>

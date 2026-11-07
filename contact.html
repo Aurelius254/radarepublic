@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact · Rada Republic</title>
+  <meta name="theme-color" content="#07060b">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="contact">
+  <div id="site-header"></div>
+  <main>
+    <section class="container contact-grid" style="padding-top:48px">
+      <div>
+        <span class="eyebrow">Contact us</span>
+        <h1 class="h1" style="font-size:clamp(36px,5vw,56px);margin-top:12px">Reach out<br>to <span class="grad-text">us.</span></h1>
+        <p class="lead" style="margin-top:14px;font-size:16px">Questions about a ticket, an order, or want to bring your event to the Republic? We usually reply within a few hours.</p>
+        <div class="contact-list" id="details"></div>
+        <div id="socials"></div>
+      </div>
+
+      <form class="contact-form" id="cform" novalidate>
+        <div class="field">
+          <span class="label">What's this about?</span>
+          <div class="topic-chips" id="topics">
+            <button type="button" data-t="general">General enquiry</button>
+            <button type="button" data-t="support">Support / technical issue</button>
+            <button type="button" data-t="host">I want to host an event</button>
+            <button type="button" data-t="press">Press &amp; media</button>
+            <button type="button" data-t="partner">Partnership</button>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field" data-f="c-name"><label class="label" for="c-name">Full name<span class="req">*</span></label><input class="input" id="c-name" placeholder="Your name" autocomplete="name"><span class="err-msg">Enter your name</span></div>
+          <div class="field" data-f="c-email"><label class="label" for="c-email">Email address<span class="req">*</span></label><input class="input" id="c-email" type="email" placeholder="you@example.com" autocomplete="email"><span class="err-msg">Enter a valid email</span></div>
+          <div class="field span-2"><label class="label" for="c-phone">Phone (optional)</label><input class="input" id="c-phone" type="tel" placeholder="0712345678" autocomplete="tel"></div>
+          <div class="field span-2" data-f="c-msg"><label class="label" for="c-msg">Message<span class="req">*</span></label><textarea class="input" id="c-msg" placeholder="What would you like to talk about?"></textarea><span class="err-msg">Tell us a little more (at least 10 characters)</span></div>
+        </div>
+        <button class="btn btn-primary btn-lg" type="submit" style="justify-self:start">Send message <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/></svg></button>
+      </form>
+    </section>
+
+    <section class="cta-band">
+      <span class="glow purple" style="width:420px;height:300px;left:50%;top:10%;transform:translateX(-50%);opacity:.22"></span>
+      <div class="container" style="position:relative">
+        <h2 class="h2">Ready to experience more?</h2>
+        <div class="actions">
+          <a class="btn btn-primary btn-lg" href="events.html">Explore Events</a>
+          <button class="btn btn-ghost btn-lg" type="button" id="list-ev">Become a Partner</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    (function () {
+      const { $, $$, icon, esc } = RR;
+      const C = RR_DATA.contact;
+      const tel = (s) => s.replace(/\s/g, "");
+      $("#details").innerHTML = [
+        ["mail", "Email", C.email, "mailto:" + C.email],
+        ["phone", "Call us", C.phone, "tel:" + tel(C.phone)],
+        ["whatsapp", "WhatsApp", C.whatsapp, "https://wa.me/" + tel(C.whatsapp).replace("+", "")],
+        ["pin", "Based in", C.location, ""],
+        ["clock", "Hours", C.hours, ""]
+      ].map(([ic, l, v, href]) => `<${href ? `a href="${href}" target="${href.startsWith("http") ? "_blank" : "_self"}" rel="noopener"` : "div"} class="contact-item"><span class="ci">${icon(ic)}</span><div><small>${l}</small><b>${esc(v)}</b></div></${href ? "a" : "div"}>`).join("");
+      $("#socials").innerHTML = RR.socialsHTML();
+
+      let topic = RR.qs("topic") || "general";
+      const setTopic = (t) => { topic = t; $$("#topics button").forEach((b) => b.classList.toggle("active", b.dataset.t === t)); };
+      setTopic(topic);
+      $("#topics").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setTopic(b.dataset.t); });
+      $("#list-ev").addEventListener("click", () => { setTopic("partner"); $("#cform").scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => $("#c-name").focus(), 500); });
+
+      const u = RR.currentUser();
+      if (u) { $("#c-name").value = u.name; $("#c-email").value = u.email; $("#c-phone").value = "0" + u.phone; }
+
+      $("#cform").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const errs = { "c-name": $("#c-name").value.trim().length < 2, "c-email": !RR.validEmail($("#c-email").value), "c-msg": $("#c-msg").value.trim().length < 10 };
+        Object.entries(errs).forEach(([k, b]) => RR.fieldErr(f, k, b));
+        if (Object.values(errs).some(Boolean)) return;
+        // BACKEND: POST /api/contact { topic, name, email, phone, message }
+        RR.toast("Thanks! Your message is on its way, and we'll get back to you soon.", "ok");
+        $("#c-msg").value = "";
+      });
+    })();
+  </script>
+</body>
+</html>
