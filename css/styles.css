@@ -24,7 +24,12 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; overflow-x: clip; }
+html { scroll-behavior: smooth; overflow-x: clip; -webkit-tap-highlight-color: transparent; }
+/* no highlight box when tapping/clicking; keyboard users still get a visible focus ring */
+a, button, input, select, textarea, summary, label { -webkit-tap-highlight-color: transparent; }
+:focus:not(:focus-visible) { outline: none; }
+:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+.input:focus-visible { outline: none; }
 body {
   font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: var(--bg);
