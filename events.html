@@ -37,7 +37,7 @@
         </div>
       </div></div>
 
-      <div class="grid" id="list" style="margin-top:24px"></div>
+      <div class="ev-grid" id="list" style="margin-top:36px"></div>
     </section>
   </main>
   <div id="site-footer"></div>
@@ -78,7 +78,7 @@
         if (st.sort === "price-asc") list.sort((a, b) => RR.minPrice(a) - RR.minPrice(b));
         if (st.sort === "price-desc") list.sort((a, b) => RR.minPrice(b) - RR.minPrice(a));
         $("#count").textContent = `(${list.length})`;
-        $("#list").innerHTML = list.length ? list.map(eventCard).join("") :
+        $("#list").innerHTML = list.length ? list.map((e) => eventCard(e)).join("") :
           `<div class="results-empty">${st.when === "today" ? "Nothing on today. Check out what's coming up this week." : "No events match those filters."}<br><button class="link" style="margin-top:10px" onclick="document.getElementById('f-reset').click()">Clear filters</button></div>`;
       }
       $("#f-cat").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { st.cat = b.dataset.v; render(); } });

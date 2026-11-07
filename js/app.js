@@ -119,18 +119,18 @@
     return `<div class="product-art" style="--a:${p.a}55;--b:${p.b}44"><svg viewBox="0 0 24 24" fill="#f4eefa">${SHAPES[p.shape] || SHAPES.tee}</svg>${mono}</div>`;
   }
 
-  function eventCard(e) {
-    return `<a class="card" href="event.html?id=${e.id}">
-      <div class="card-media">${poster(e)}</div>
-      <div class="card-body">
-        <div class="card-title">${esc(e.title)}</div>
-        <div class="card-meta">${icon("cal")} ${esc(fmtDate(e.date))}</div>
-        <div class="card-meta">${icon("pin")} ${esc(e.venue)}</div>
-        <div class="card-foot">
-          <div class="price"><small>From</small>${fmt(minPrice(e))}</div>
-          <span class="go">${icon("arrow")}</span>
-        </div>
-      </div>
+  // Event card: banner image on top, plain details underneath.
+  // opts.price = false → just the name and when (used on the homepage).
+  function eventCard(e, opts) {
+    const showPrice = !(opts && opts.price === false);
+    const when = showPrice
+      ? `${fmtShort(e.date).toUpperCase()} · ${esc(e.city)}`
+      : `${esc(fmtDate(e.date))} · ${esc(fmtTime(e.date))}`;
+    return `<a class="ev-card" href="event.html?id=${e.id}">
+      <div class="ev-media"><span class="ev-cat">${esc(e.category)}</span>${poster(e)}</div>
+      <div class="ev-title">${esc(e.title)}</div>
+      <div class="ev-meta">${when}</div>
+      ${showPrice ? `<div class="ev-price">From <b>${fmt(minPrice(e))}</b></div>` : ""}
     </a>`;
   }
   function productCard(p) {
@@ -316,9 +316,7 @@
         </nav>
         <div class="mobile-menu" id="mobile-menu">
           ${searchBox("q-mob")}
-          ${NAV.map((n) => `<a class="m-link ${n.page === page ? "active" : ""}" href="${n.href}">${n.label}</a>`).join("")}
-          <a class="m-link" href="tickets.html">My Tickets</a>
-        </div>
+          ${NAV.map((n) => `<a class="m-link ${n.page === page ? "active" : ""}" href="${n.href}">${n.label}</a>`).join("")}        </div>
       </div>
     </header>`;
 

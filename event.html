@@ -96,7 +96,7 @@
       renderTiers();
 
       const more = RR.upcomingEvents().filter((x) => x.id !== e.id).slice(0, 4);
-      $("#more").innerHTML = `<div class="section-head"><h2 class="h2" style="font-size:30px">More events</h2><a class="see-all" href="events.html">See all ${icon("arrow")}</a></div><div class="row4">${more.map(RR.eventCard).join("")}</div>`;
+      $("#more").innerHTML = `<div class="section-head"><h2 class="h2" style="font-size:30px">More events</h2><a class="see-all" href="events.html">See all ${icon("arrow")}</a></div><div class="ev-grid ev-row">${more.map((x) => RR.eventCard(x)).join("")}</div>`;
     })();
   </script>
 </body>

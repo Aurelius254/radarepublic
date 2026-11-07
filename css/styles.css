@@ -699,3 +699,51 @@ a.contact-item:hover { border-color: rgba(255,46,147,.4); }
 .faq-item[open] summary .ic { transform: rotate(180deg); }
 .faq-item p { padding: 0 20px 18px; color: var(--muted); }
 @media (max-width: 760px) { .faq-layout { grid-template-columns: 1fr; gap: 20px; } .faq-nav { position: static; display: flex; flex-wrap: wrap; } .faq-nav a { border: 1px solid var(--border-2); border-radius: 999px; padding: 7px 14px; font-size: 14px; } }
+
+/* ---------- Hero title: RADA solid + REPUBLIC outlined ---------- */
+.hero-title { margin: 22px 0 26px; line-height: .92; text-transform: uppercase; font-weight: 900; letter-spacing: -.03em; }
+.hero-title span { display: block; }
+.hero-title .kicker { font-size: clamp(13px, 1.4vw, 16px); letter-spacing: .32em; font-weight: 700; color: var(--pink-2); margin-bottom: 14px; line-height: 1.2; }
+.hero-title .solid { font-size: clamp(48px, 7vw, 104px); color: #fff; }
+.hero-title .outline { font-size: clamp(42px, 6.3vw, 94px); color: #fff; filter: url(#rr-outline); letter-spacing: -.01em; padding: 0 3px; }
+@media (max-width: 900px) {
+  .hero-title .solid { font-size: clamp(56px, 17vw, 110px); }
+  .hero-title .outline { font-size: clamp(44px, 13.4vw, 96px); }
+}
+
+/* "Huna rada? Tuko na form." as a text-message exchange */
+.rada-chat { display: flex; flex-direction: column; gap: 10px; margin: 0 0 26px; max-width: 400px; }
+.bubble { position: relative; padding: 11px 18px 13px; border-radius: 22px; font-weight: 800; font-style: italic; font-size: clamp(19px, 2vw, 23px); letter-spacing: -.01em; width: fit-content; line-height: 1.2;
+  opacity: 0; transform: translateY(10px) scale(.95); animation: bubbleIn .45s cubic-bezier(.2, .9, .3, 1.25) forwards; }
+.bubble .who { display: block; font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; opacity: .65; margin-bottom: 3px; }
+.bubble.ask { background: rgba(255,255,255,.07); border: 1px solid var(--border-2); border-bottom-left-radius: 6px; animation-delay: .3s; }
+.bubble.reply { align-self: flex-end; background: var(--grad); border-bottom-right-radius: 6px; box-shadow: 0 14px 34px -12px rgba(255,46,147,.75); animation-delay: 1.1s; }
+@keyframes bubbleIn { to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .bubble { opacity: 1; transform: none; } }
+
+/* ---------- Event cards: banner image, details underneath ---------- */
+.ev-grid { display: grid; gap: 40px 22px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.ev-row { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1024px) { .ev-row { grid-template-columns: repeat(2, 1fr); } }
+.ev-card { display: flex; flex-direction: column; min-width: 0; }
+.ev-media { position: relative; aspect-ratio: 4 / 5; margin-top: 12px; transition: transform .3s; }
+.ev-media .poster { border-radius: 20px; box-shadow: 0 0 0 1px var(--border); transition: box-shadow .3s; }
+.ev-media .poster .p-cat { display: none; }
+.ev-media .poster .p-title { font-size: clamp(17px, 1.8vw, 24px); }
+.ev-card:hover .ev-media { transform: translateY(-4px); }
+.ev-card:hover .poster { box-shadow: 0 0 0 1px rgba(255,46,147,.55), 0 22px 40px -18px rgba(255,46,147,.65); }
+.ev-cat { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); z-index: 2; background: var(--pink); color: #fff; font-size: 13px; font-weight: 700; padding: 4px 14px; border-radius: 999px; white-space: nowrap; box-shadow: 0 6px 16px -6px rgba(255,46,147,.85); }
+.ev-title { margin-top: 14px; font-weight: 700; font-size: 17px; line-height: 1.25; }
+.ev-meta { margin-top: 5px; color: var(--muted); font-size: 14px; }
+.ev-price { margin-top: 8px; color: var(--muted); font-size: 15px; }
+.ev-price b { color: var(--pink-2); font-weight: 800; margin-left: 4px; }
+@media (max-width: 600px) {
+  .ev-grid, .ev-row { grid-template-columns: repeat(2, 1fr); gap: 30px 14px; }
+  .ev-media .poster { border-radius: 16px; padding: 12px; }
+  .ev-media .poster .p-title { font-size: 15px; }
+  .ev-media .poster .p-date { font-size: 9px; letter-spacing: .14em; }
+  .ev-cat { font-size: 11px; padding: 3px 10px; top: -10px; }
+  .ev-title { font-size: 15px; margin-top: 12px; }
+  .ev-meta { font-size: 12.5px; }
+  .ev-price { font-size: 13.5px; margin-top: 6px; }
+}

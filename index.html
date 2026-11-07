@@ -12,6 +12,15 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="home" data-page="home">
+  <!-- Clean outline for "REPUBLIC": grow the letters, then cut the original shape out -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="rr-outline" x="-5%" y="-10%" width="110%" height="120%">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.6" result="grown"/>
+      <feComposite in="grown" in2="SourceAlpha" operator="out" result="ring"/>
+      <feFlood flood-color="#ffffff"/>
+      <feComposite in2="ring" operator="in"/>
+    </filter>
+  </svg>
   <div id="site-header"></div>
 
   <main>
@@ -22,7 +31,11 @@
       <div class="container hero-grid">
         <div>
           <span class="pill">Now selling · Nairobi &amp; beyond</span>
-          <h1 class="h1" style="margin:22px 0 20px">Welcome to<br>the <span class="grad-text">Republic.</span></h1>
+          <h1 class="hero-title"><span class="kicker">Welcome to</span><span class="solid">Rada</span><span class="outline">Republic</span></h1>
+          <div class="rada-chat" aria-label="Huna rada? Tuko na form.">
+            <div class="bubble ask"><span class="who">You</span>Huna rada?</div>
+            <div class="bubble reply"><span class="who">Rada Republic</span>Tuko na form.</div>
+          </div>
           <p class="lead">Tickets to the loudest nights in Kenya and the merch to wear to them. Pay with M-Pesa in seconds, with no account needed.</p>
           <div class="hero-actions">
             <a class="btn btn-primary btn-lg" href="events.html">Explore Events <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
@@ -45,7 +58,7 @@
           <div><span class="eyebrow">What's on</span><h2 class="h2" style="margin-top:8px">Upcoming Events</h2></div>
           <a class="see-all" href="events.html">See all <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
-        <div class="row4" id="home-events"></div>
+        <div class="ev-grid ev-row" id="home-events"></div>
       </div>
     </section>
 
@@ -108,7 +121,7 @@
       // hero poster stack
       const pick = [ev[1] || ev[0], ev[2] || ev[0], RR.featuredEvent()];
       RR.$("#hero-visual").innerHTML = pick.map((e, i) => `<a href="event.html?id=${e.id}" class="stack s${i + 1}">${RR.poster(e, i === 2 ? "lg" : "")}</a>`).join("");
-      RR.$("#home-events").innerHTML = ev.slice(0, 4).map(RR.eventCard).join("");
+      RR.$("#home-events").innerHTML = ev.slice(0, 4).map((e) => RR.eventCard(e, { price: false })).join("");
       RR.$("#home-merch").innerHTML = RR_DATA.products.slice(0, 4).map(RR.productCard).join("");
       RR.renderFeature(RR.$("#home-feature"), RR.featuredEvent(), "Book Now");
     })();
