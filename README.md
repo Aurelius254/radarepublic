@@ -4,6 +4,8 @@
 
 To update it: commit your changes and `git push`. GitHub Pages republishes automatically in about a minute.
 
+**After changing CSS or JS:** bump the `?v=` version on the `css/styles.css` and `js/*.js` links in every `.html` file (e.g. `?v=20261107c` → `?v=20261108a`). Phones cache those files, and the new version tag makes them fetch the update instead of mixing a new page with an old stylesheet.
+
 Static HTML/CSS/JS. There's no build step.
 
 ## Run it
