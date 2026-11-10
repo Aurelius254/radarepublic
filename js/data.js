@@ -8,7 +8,7 @@ window.RR_DATA = {
   events: [
     {
       id: "e1", title: "Rada Nights: Neon Edition", category: "Nightlife", featured: true,
-      date: "2026-11-21T20:00:00+03:00", venue: "The Alchemist, Westlands", city: "Nairobi",
+      date: "2026-11-21T20:00:00+03:00", venue: "Eldoret Sports Club", city: "Eldoret",
       a: "#ff2e93", b: "#b44dff", image: "",
       lineup: ["DJ Kace", "Nina Wavy", "MC Rada", "Selector Juma"],
       desc: "Our signature night goes full neon. Glow paint at the door, three rooms of Afrobeats, Amapiano and Gengetone, and a midnight laser show you will be talking about until Christmas.",
@@ -21,7 +21,7 @@ window.RR_DATA = {
     },
     {
       id: "e2", title: "Afro-House Sunset Sessions", category: "Music",
-      date: "2026-11-28T15:00:00+03:00", venue: "Ngong Racecourse", city: "Nairobi",
+      date: "2026-11-28T15:00:00+03:00", venue: "ASK Showground", city: "Eldoret",
       a: "#ff7a45", b: "#b44dff", image: "",
       lineup: ["Kasiva Sounds", "Deep East Collective", "Lola B"],
       desc: "Golden hour, deep grooves. An open-air Afro-House day party that runs from sunset till late, with food trucks and a chill-out garden.",
@@ -29,7 +29,7 @@ window.RR_DATA = {
     },
     {
       id: "e3", title: "Laugh Republic: Comedy Special", category: "Comedy",
-      date: "2026-12-05T19:00:00+03:00", venue: "Kenya National Theatre", city: "Nairobi",
+      date: "2026-12-05T19:00:00+03:00", venue: "Eldoret Town Hall", city: "Eldoret",
       a: "#b44dff", b: "#4d6bff", image: "",
       lineup: ["Headliner TBA", "Wanjiru K", "The Rada Roast Crew"],
       desc: "Two hours of stand-up from the funniest voices in the city, plus a live roast segment where nobody is safe.",
@@ -37,31 +37,31 @@ window.RR_DATA = {
     },
     {
       id: "e4", title: "Street Food & Vinyl Fest", category: "Festival",
-      date: "2026-12-12T11:00:00+03:00", venue: "Uhuru Gardens", city: "Nairobi",
+      date: "2026-12-12T11:00:00+03:00", venue: "Rupa's Mall Grounds", city: "Eldoret",
       a: "#ff2e93", b: "#ffb02e", image: "",
       lineup: ["Vinyl Kenya DJs", "40+ food vendors", "Live bands"],
       desc: "Dig through crates, eat your way across the city and dance in the grass. Family friendly until 6pm, adults-only after dark.",
       tiers: [{ name: "Day Pass", price: 500 }, { name: "Day + Night", price: 1500 }]
     },
     {
-      id: "e5", title: "Coastline Beach Rave", category: "Festival",
-      date: "2026-12-27T14:00:00+03:00", venue: "Diani Beach", city: "Kwale",
+      id: "e5", title: "Kerio View Sunset Rave", category: "Festival",
+      date: "2026-12-27T14:00:00+03:00", venue: "Kerio View, Iten", city: "Iten",
       a: "#2ec5ff", b: "#ff2e93", image: "",
-      lineup: ["Sandbox Collective", "DJ Mama Tee", "Coast Riddim Crew"],
-      desc: "Barefoot on the sand from afternoon to sunrise. The coast's biggest end-of-year beach party.",
+      lineup: ["Valley Sound Collective", "DJ Mama Tee", "Rift Riddim Crew"],
+      desc: "Dance on the edge of the Kerio Valley from sunset till late. A short ride from Eldoret, with the best view in the Rift.",
       tiers: [{ name: "Regular", price: 2000 }, { name: "VIP", price: 5000, note: "Cabana access" }]
     },
     {
       id: "e6", title: "Rada Republic NYE Takeover", category: "Nightlife",
-      date: "2026-12-31T19:00:00+03:00", venue: "Carnivore Grounds, Langata", city: "Nairobi",
+      date: "2026-12-31T19:00:00+03:00", venue: "Kipchoge Keino Stadium", city: "Eldoret",
       a: "#b44dff", b: "#ff2e93", image: "",
       lineup: ["Headliner announced Dec 1", "DJ Kace", "Nina Wavy"],
-      desc: "Count down to 2027 with the Republic. Fireworks at midnight, two stages and the loudest crowd in Nairobi.",
+      desc: "Count down to 2027 with the Republic. Fireworks at midnight, two stages and the loudest crowd in Eldoret.",
       tiers: [{ name: "Regular", price: 3000 }, { name: "VIP", price: 7500 }, { name: "VVIP Table (10 pax)", price: 50000 }]
     },
     {
       id: "e7", title: "Amapiano vs Gengetone", category: "Music",
-      date: "2027-01-17T18:00:00+03:00", venue: "KICC Grounds", city: "Nairobi",
+      date: "2027-01-17T18:00:00+03:00", venue: "64 Stadium", city: "Eldoret",
       a: "#ff2e93", b: "#7b2cff", image: "",
       lineup: ["Battle of the DJs", "Live MCs"],
       desc: "Two sounds, one stage, one winner, and the crowd decides. A DJ battle night unlike any other.",
@@ -69,7 +69,7 @@ window.RR_DATA = {
     },
     {
       id: "e8", title: "Rada Cup 5-a-Side", category: "Sports",
-      date: "2027-01-24T09:00:00+03:00", venue: "Nyayo Stadium Annex", city: "Nairobi",
+      date: "2027-01-24T09:00:00+03:00", venue: "Kipchoge Keino Stadium Annex", city: "Eldoret",
       a: "#31d67b", b: "#b44dff", image: "",
       lineup: ["16 teams", "DJ sets between matches"],
       desc: "Street football tournament with a KES 200,000 prize pool. Come for the matches, stay for the after-party.",
@@ -98,8 +98,8 @@ window.RR_DATA = {
 
   /* Delivery zones for merch (fees are placeholders, confirm with the business) */
   delivery: [
-    { id: "nbi", name: "Nairobi & environs", fee: 250 },
-    { id: "major", name: "Mombasa, Kisumu, Nakuru, Eldoret", fee: 400 },
+    { id: "eld", name: "Eldoret & environs", fee: 200 },
+    { id: "major", name: "Nairobi, Mombasa, Kisumu, Nakuru", fee: 400 },
     { id: "rest", name: "Rest of Kenya", fee: 500 }
   ],
 
@@ -108,7 +108,7 @@ window.RR_DATA = {
     email: "hello@radarepublic.co.ke",
     phone: "+254 700 000 000",
     whatsapp: "+254 700 000 000",
-    location: "Nairobi, Kenya",
+    location: "Eldoret, Kenya",
     hours: "Mon–Sat, 9am – 6pm",
     socials: {
       instagram: "https://instagram.com/radarepublic",

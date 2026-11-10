@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261107c">
+  <link rel="stylesheet" href="css/styles.css?v=20261110a">
 </head>
 <body data-page="checkout">
   <div id="site-header"></div>
@@ -18,8 +18,8 @@
   </main>
   <div id="site-footer"></div>
 
-  <script src="js/data.js?v=20261107c"></script>
-  <script src="js/app.js?v=20261107c"></script>
+  <script src="js/data.js?v=20261110a"></script>
+  <script src="js/app.js?v=20261110a"></script>
   <script>
     (function () {
       const { $, $$, icon, esc, fmt } = RR;
@@ -54,9 +54,9 @@
             <div class="form-grid">
               <div class="field span-2"><span class="label">Delivery zone<span class="req">*</span></span>
                 <div class="toggle-group" id="zones">${RR_DATA.delivery.map((d) => `<button type="button" data-z="${d.id}" class="${d.id === zone ? "active" : ""}">${esc(d.name)} · ${fmt(d.fee)}</button>`).join("")}</div></div>
-              <div class="field" data-f="co-town"><label class="label" for="co-town">Town / city<span class="req">*</span></label><input class="input" id="co-town" placeholder="e.g. Nairobi" value="${esc(v("co-town") || (u && u.city) || "")}"><span class="err-msg">Enter your town or city</span></div>
-              <div class="field" data-f="co-area"><label class="label" for="co-area">Area / estate<span class="req">*</span></label><input class="input" id="co-area" placeholder="e.g. Kilimani" value="${esc(v("co-area"))}"><span class="err-msg">Enter your area or estate</span></div>
-              <div class="field span-2" data-f="co-street"><label class="label" for="co-street">Street, building &amp; house no.<span class="req">*</span></label><input class="input" id="co-street" placeholder="e.g. Argwings Kodhek Rd, Rada Apts, Hse 4B" value="${esc(v("co-street"))}"><span class="err-msg">Enter your street and building</span></div>
+              <div class="field" data-f="co-town"><label class="label" for="co-town">Town / city<span class="req">*</span></label><input class="input" id="co-town" placeholder="e.g. Eldoret" value="${esc(v("co-town") || (u && u.city) || "")}"><span class="err-msg">Enter your town or city</span></div>
+              <div class="field" data-f="co-area"><label class="label" for="co-area">Area / estate<span class="req">*</span></label><input class="input" id="co-area" placeholder="e.g. Elgon View" value="${esc(v("co-area"))}"><span class="err-msg">Enter your area or estate</span></div>
+              <div class="field span-2" data-f="co-street"><label class="label" for="co-street">Street, building &amp; house no.<span class="req">*</span></label><input class="input" id="co-street" placeholder="e.g. Oloo Rd, Rada Apts, Hse 4B" value="${esc(v("co-street"))}"><span class="err-msg">Enter your street and building</span></div>
               ${RR.phoneField("co-phone", 'Delivery contact phone<span class="req">*</span>', keep.phone).replace('class="field"', 'class="field"')}
               <div class="field"><label class="label" for="co-notes">Delivery notes</label><input class="input" id="co-notes" placeholder="Landmark, gate code..." value="${esc(v("co-notes"))}"></div>
             </div>

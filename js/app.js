@@ -148,7 +148,7 @@
      AUTH (mock)
      BACKEND: replace with real API (hash passwords server-side!)
      ========================================================= */
-  const DEMO_USER = { id: "u_demo", name: "Wanjiku Kamau", phone: "712345678", email: "demo@radarepublic.co.ke", password: "rada2026", city: "Nairobi", gender: "", dob: "", joined: "2026-03-14" };
+  const DEMO_USER = { id: "u_demo", name: "Wanjiku Kamau", phone: "712345678", email: "demo@radarepublic.co.ke", password: "rada2026", city: "Eldoret", gender: "", dob: "", joined: "2026-03-14" };
   function users() {
     let u = store.get("rr_users", null);
     if (!u) { u = [DEMO_USER]; store.set("rr_users", u); }
@@ -415,7 +415,7 @@
         <div class="foot-grid">
           <div class="foot-brand">
             ${brand()}
-            <p>Tickets, merch and the nights you'll talk about for years. Built in Kenya, paid with M-Pesa.</p>
+            <p>Tickets, merch and the nights you'll talk about for years. Built in Eldoret, paid with M-Pesa.</p>
             ${socialsHTML()}
           </div>
           <div class="foot-col"><h4>Discover</h4><ul>
