@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111f">
+  <link rel="stylesheet" href="css/styles.css?v=20261112a">
 </head>
 <body data-page="tickets">
   <div id="site-header"></div>
@@ -19,19 +19,24 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js?v=20261111f"></script>
-  <script src="js/data.js?v=20261111f"></script>
-  <script src="js/app.js?v=20261111f"></script>
-  <script src="js/account.js?v=20261111f"></script>
+  <script src="js/firebase-config.js?v=20261112a"></script>
+  <script src="js/data.js?v=20261112a"></script>
+  <script src="js/app.js?v=20261112a"></script>
+  <script src="js/account.js?v=20261112a"></script>
   <script>
     RR.ready(function () {
       const { $, $$, icon, esc, fmt } = RR;
       let tab = "upcoming";
-      function render() {
+      let all = null, loadedFor = null;
+      async function render() {
         const u = RR.currentUser();
-        if (!u) return RR.signedOut($("#root"), "Sign in to see your tickets");
-        const now = new Date();
-        const all = RR.userTickets(u).map((t) => ({ ...t, e: RR.getEvent(t.eventId) })).filter((t) => t.e).sort((a, b) => new Date(a.e.date) - new Date(b.e.date));
+        if (!u) { all = null; return RR.signedOut($("#root"), "Sign in to see your tickets"); }
+        if (!all || loadedFor !== u.id) {
+          $("#root").innerHTML = `<div class="empty"><div class="em-ic"><span class="spinner" style="width:30px;height:30px"></span></div><h2>Loading your tickets…</h2></div>`;
+          loadedFor = u.id;
+          all = (await RR.userTickets()).sort((a, b) => new Date(a.e.date) - new Date(b.e.date));
+        }
+        const now = new Date(Date.now() - 6 * 3600e3);   // tickets stay "upcoming" until 6 hours after the start
         const up = all.filter((t) => new Date(t.e.date) >= now), past = all.filter((t) => new Date(t.e.date) < now).reverse();
         const list = tab === "upcoming" ? up : past;
 
@@ -53,7 +58,7 @@
       const card = (t, past) => `<div class="ticket">
           <a class="ticket-media" href="event.html?id=${t.e.id}">${RR.poster(t.e)}</a>
           <div class="ticket-body">
-            <div><span class="status ${past ? "past" : ""}">${past ? "Attended" : "Valid"}</span> <span class="tag pink" style="margin-left:6px">${esc(t.tier)}</span></div>
+            <div><span class="status ${past || t.status === "used" ? "past" : ""}">${t.status === "used" ? "Used" : past ? "Past" : "Valid"}</span> <span class="tag pink" style="margin-left:6px">${esc(t.tier)}</span></div>
             <h3>${esc(t.e.title)}</h3>
             <div class="ticket-meta">
               <span>${icon("cal")} ${esc(RR.fmtDate(t.e.date))}</span>
@@ -64,7 +69,7 @@
           </div>
           <div class="ticket-stub">
             <span class="ticket-code">${esc(t.code)}</span>
-            ${past ? "" : `<button class="btn btn-primary btn-sm" data-show="${esc(t.code)}">${icon("qr")} Show QR</button>`}
+            ${past || t.status === "used" ? "" : `<button class="btn btn-primary btn-sm" data-show="${esc(t.code)}">${icon("qr")} Show QR</button>`}
           </div>
         </div>`;
       function showQR(t) {

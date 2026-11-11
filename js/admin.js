@@ -13,6 +13,8 @@
 
   const TABS = [
     ["dashboard", "Dashboard", "chart"],
+    ["orders", "Orders", "cart"],
+    ["scan", "Gate scanner", "qr"],
     ["events", "Events", "ticket"],
     ["merch", "Merch", "bag"],
     ["content", "Site content", "edit"],
@@ -22,7 +24,7 @@
   ];
   const SHAPES = [["tee", "T-shirt"], ["hoodie", "Hoodie"], ["cap", "Cap"], ["bucket", "Bucket hat"], ["bag", "Tote bag"], ["band", "Wristband"], ["pants", "Joggers"]];
   let tab = TABS.some((t) => t[0] === location.hash.slice(1)) ? location.hash.slice(1) : "dashboard";
-  const S = { events: [], products: [], messages: [], subscribers: [], site: null, faq: null, loaded: false };
+  const S = { events: [], products: [], messages: [], subscribers: [], orders: [], site: null, faq: null, loaded: false };
   let started = false, authKnown = false;
 
   /* ---------- helpers ---------- */
@@ -93,6 +95,9 @@
       S.faq = faq.exists ? faq.data() : null;
       S.messages = msg.docs.map((d) => ({ ...d.data(), id: d.id }));
       S.subscribers = sub.docs.map((d) => ({ ...d.data(), id: d.id }));
+      S.orders = await db.collection("orders").orderBy("createdAt", "desc").limit(500).get()
+        .then((q) => q.docs.map((d) => ({ ...d.data(), id: d.id })))
+        .catch((e) => { console.warn("orders", e); return []; });
       S.loaded = true;
     } catch (e) { S.error = (e.code || "") + " " + (e.message || e); fail(e, "load the admin data"); }
     renderNav(); view();
@@ -110,13 +115,14 @@
   function renderNav() {
     const nav = $("#cp-nav"); if (!nav) return;
     const newMsgs = S.messages.filter((m) => m.status === "new").length;
-    const counts = { events: S.events.length, merch: S.products.length, inbox: newMsgs, subscribers: S.subscribers.length };
-    nav.innerHTML = TABS.map(([id, label, ic]) => `<a href="#${id}" class="${id === tab ? "active" : ""}">${icon(ic)}<span>${label}</span>${S.loaded && counts[id] ? `<em class="${id === "inbox" ? "hot" : ""}">${counts[id]}</em>` : ""}</a>`).join("");
+    const counts = { events: S.events.length, merch: S.products.length, inbox: newMsgs, subscribers: S.subscribers.length, orders: S.orders.filter((o) => o.status === "paid" && o.fulfilment === "to-deliver").length };
+    nav.innerHTML = TABS.map(([id, label, ic]) => `<a href="#${id}" class="${id === tab ? "active" : ""}">${icon(ic)}<span>${label}</span>${S.loaded && counts[id] ? `<em class="${id === "inbox" || id === "orders" ? "hot" : ""}">${counts[id]}</em>` : ""}</a>`).join("");
   }
   function view() {
     const m = $("#cp-main"); if (!m) return;
     if (!S.loaded) { m.innerHTML = S.error ? `<div class="empty"><h2>Couldn't load the admin data</h2><p class="muted">${esc(S.error)}</p><div class="actions"><button class="btn btn-primary" onclick="location.reload()">Try again</button></div></div>` : `<div class="empty"><span class="spinner"></span></div>`; return; }
-    try { ({ dashboard: vDashboard, events: vEvents, merch: vMerch, content: vContent, faq: vFaq, inbox: vInbox, subscribers: vSubscribers }[tab] || vDashboard)(m); }
+    if (tab !== "scan") stopScan();
+    try { ({ dashboard: vDashboard, orders: vOrders, scan: vScan, events: vEvents, merch: vMerch, content: vContent, faq: vFaq, inbox: vInbox, subscribers: vSubscribers }[tab] || vDashboard)(m); }
     catch (e) { console.error(e); m.innerHTML = `<div class="empty"><h2>This section hit a problem</h2><pre style="white-space:pre-wrap;text-align:left;font-size:12.5px;color:#ff8b96">${esc(e.message)}</pre></div>`; }
     m.scrollTop = 0;
   }
@@ -195,7 +201,6 @@
     const pub = S.events.filter((e) => e.published !== false);
     const upcoming = pub.filter((e) => !isPast(e));
     const newMsgs = S.messages.filter((x) => x.status === "new");
-    const featured = S.events.find((e) => e.featured);
     m.innerHTML = head("Dashboard", `Signed in as ${esc(((RR.currentUser() || {}).name) || (auth.currentUser && (auth.currentUser.displayName || auth.currentUser.email || auth.currentUser.phoneNumber)) || "admin")}`) + importBanner() + `
       <div class="cp-stats">
         <a class="stat" href="#events"><b class="grad-text">${upcoming.length}</b><span>Upcoming events live</span></a>
@@ -205,14 +210,13 @@
       </div>
       <div class="cp-grid2">
         <div class="panel"><div class="panel-title"><h3>Next up</h3></div>
-          ${upcoming.slice(0, 5).map((e) => `<div class="cp-mini"><span class="cp-thumb">${RR.poster(e)}</span><div><b>${esc(e.title)}</b><small>${esc(fmtDate(e.date))} · ${esc(e.venue)}</small></div>${e.featured ? `<span class="tag pink">Featured</span>` : ""}</div>`).join("") || `<p class="muted">No upcoming events. <a class="link" href="#events">Add one</a>.</p>`}
+          ${upcoming.slice(0, 5).map((e) => `<div class="cp-mini"><span class="cp-thumb">${RR.poster(e)}</span><div><b>${esc(e.title)}</b><small>${esc(fmtDate(e.date))} · ${esc(e.venue)} · ${soldCount(e)} sold</small></div>${e.featured ? `<span class="tag pink">Featured</span>` : ""}</div>`).join("") || `<p class="muted">No upcoming events. <a class="link" href="#events">Add one</a>.</p>`}
         </div>
         <div class="panel"><div class="panel-title"><h3>Latest messages</h3></div>
           ${S.messages.slice(0, 5).map((x) => `<a class="cp-mini" href="#inbox"><span class="cp-dot ${x.status === "new" ? "on" : ""}"></span><div><b>${esc(x.name)}</b><small>${esc(topicName(x.topic))} · ${esc(when(x.createdAt))}</small></div></a>`).join("") || `<p class="muted">No messages yet.</p>`}
         </div>
       </div>
-      <div class="panel" style="margin-top:18px"><div class="panel-title"><h3>Coming next</h3></div>
-        <p class="muted">Orders, sales totals and the gate ticket scanner appear here once M-Pesa payments are connected. ${featured ? `Featured event right now: <b style="color:var(--text)">${esc(featured.title)}</b>.` : ""}</p></div>`;
+      ${salesPanel()}`;
     wireImport(m);
   }
 
@@ -508,6 +512,251 @@
       if (!confirm("Delete this message permanently?")) return;
       try { await db.doc("messages/" + b.dataset.del).delete(); S.messages = S.messages.filter((y) => y.id !== b.dataset.del); renderNav(); vInbox(m); toast("Message deleted.", "ok"); } catch (err) { fail(err, "delete"); }
     }));
+  }
+
+  /* =========================================================
+     SALES (dashboard) & ORDERS
+     ========================================================= */
+  const soldCount = (e) => Object.values(e.sold || {}).reduce((s, n) => s + (+n || 0), 0);
+  const tsMs = (ts) => (ts && ts.toMillis ? ts.toMillis() : 0);
+  function salesPanel() {
+    const paidAll = S.orders.filter((o) => o.status === "paid");
+    const live = paidAll.filter((o) => o.env === "production");
+    const testOnly = !live.length && paidAll.length;
+    const paid = testOnly ? paidAll : live;
+    const week = Date.now() - 7 * 864e5;
+    const sum = (list) => list.reduce((s, o) => s + (o.total || 0), 0);
+    const tix = paid.reduce((s, o) => s + o.items.filter((i) => i.type === "ticket").reduce((a, i) => a + i.qty, 0), 0);
+    const toDeliver = paid.filter((o) => o.fulfilment === "to-deliver").length;
+    return `<div class="panel" style="margin-top:18px"><div class="panel-title"><h3>Sales</h3>${testOnly ? `<span class="tag warn" style="margin-left:auto">Test payments (sandbox)</span>` : ""}</div>
+      ${paid.length ? `<div class="cp-stats" style="margin:0">
+        <a class="stat" href="#orders"><b class="grad-text">${fmt(sum(paid))}</b><span>Total sales</span></a>
+        <a class="stat" href="#orders"><b class="grad-text">${fmt(sum(paid.filter((o) => tsMs(o.paidAt || o.createdAt) > week)))}</b><span>Last 7 days</span></a>
+        <a class="stat" href="#orders"><b class="grad-text">${tix}</b><span>Tickets sold</span></a>
+        <a class="stat" href="#orders"><b class="grad-text">${toDeliver}</b><span>Merch to deliver</span></a></div>`
+      : `<p class="muted">No paid orders yet. Once M-Pesa is connected, sales show up here and in <a class="link" href="#orders">Orders</a>.</p>`}</div>`;
+  }
+
+  let ordF = "paid", ordQ = "";
+  const ORD_FILTERS = [
+    ["paid", "Paid", (o) => o.status === "paid"],
+    ["deliver", "To deliver", (o) => o.status === "paid" && o.fulfilment === "to-deliver"],
+    ["pending", "Waiting", (o) => o.status === "pending"],
+    ["failed", "Not paid", (o) => o.status === "failed" || o.status === "cancelled"],
+    ["all", "All", () => true]
+  ];
+  const statusTag = (o) => o.status === "paid" ? `<span class="tag ok">Paid</span>` : o.status === "pending" ? `<span class="tag">Waiting</span>` : `<span class="tag warn">${o.status === "cancelled" ? "Cancelled" : "Failed"}</span>`;
+  const itemsText = (o) => o.items.map((i) => `${i.qty}× ${i.type === "ticket" ? i.variant + " · " + i.name : i.name + " (" + i.variant + ")"}`).join(", ");
+  function vOrders(m) {
+    const f = (ORD_FILTERS.find((x) => x[0] === ordF) || ORD_FILTERS[0])[2];
+    const q = ordQ.toLowerCase();
+    const list = S.orders.filter(f).filter((o) => !q || [o.id, o.contact && o.contact.name, o.email, o.mpesaPhone, o.mpesaReceipt].some((v) => String(v || "").toLowerCase().includes(q)));
+    m.innerHTML = head("Orders", "Every checkout, newest first. Tickets are issued and emailed automatically once M-Pesa confirms the payment.",
+      `<button class="btn btn-ghost" id="ord-refresh">Refresh</button>`) + `
+      <div class="tabs" style="margin-bottom:12px">${ORD_FILTERS.map(([id, label, fn]) => `<button class="${ordF === id ? "active" : ""}" data-of="${id}">${label} (${S.orders.filter(fn).length})</button>`).join("")}</div>
+      <input class="input" id="ord-q" placeholder="Search order no., name, email, phone or M-Pesa ref…" value="${esc(ordQ)}" style="max-width:440px;margin-bottom:16px">
+      <div class="cp-list">${list.map((o) => `<div class="cp-row">
+          <div class="cp-row-main"><b>${esc(o.contact ? o.contact.name : "")} · ${fmt(o.total)}</b>
+            <small>${esc(o.id)} · ${esc(when(o.createdAt))} · ${esc(o.email)}</small>
+            <small>${esc(itemsText(o))}</small>
+            <div class="cp-chips">${statusTag(o)}${o.env === "sandbox" ? `<span class="tag">Test</span>` : ""}${o.fulfilment === "to-deliver" ? `<span class="tag pink">To deliver</span>` : o.fulfilment === "delivered" ? `<span class="tag ok">Delivered</span>` : ""}${o.status === "paid" && !o.emailedAt ? `<span class="tag warn">Email not sent</span>` : ""}</div></div>
+          <div class="cp-row-actions">
+            <button class="btn btn-ghost btn-sm" data-od="${esc(o.id)}">Details</button>
+            ${o.fulfilment === "to-deliver" ? `<button class="btn btn-ghost btn-sm" data-deliv="${esc(o.id)}">${icon("truck")} Delivered</button>` : ""}
+          </div></div>`).join("") || `<div class="empty" style="padding:40px 20px"><p class="muted">No orders here${ordQ ? " match that search" : " yet"}.</p></div>`}</div>`;
+    $$("[data-of]", m).forEach((b) => b.addEventListener("click", () => { ordF = b.dataset.of; vOrders(m); }));
+    const qi = $("#ord-q", m);
+    qi.addEventListener("input", () => { ordQ = qi.value.trim(); const pos = qi.selectionStart; vOrders(m); const n = $("#ord-q", m); n.focus(); n.setSelectionRange(pos, pos); });
+    $("#ord-refresh", m).addEventListener("click", async (ev) => { busy(ev.currentTarget, true, "Refreshing…"); await loadAll(); });
+    $$("[data-od]", m).forEach((b) => b.addEventListener("click", () => orderDetails(S.orders.find((o) => o.id === b.dataset.od))));
+    $$("[data-deliv]", m).forEach((b) => b.addEventListener("click", () => markDelivered(b.dataset.deliv, b)));
+  }
+  async function markDelivered(id, btn) {
+    busy(btn, true, "Saving…");
+    try {
+      await db.doc("orders/" + id).update({ fulfilment: "delivered", deliveredAt: TS() });
+      const o = S.orders.find((x) => x.id === id); if (o) o.fulfilment = "delivered";
+      toast("Marked as delivered.", "ok"); renderNav(); view();
+    } catch (e) { busy(btn, false); fail(e); }
+  }
+  async function orderDetails(o) {
+    if (!o) return;
+    const link = `${location.origin}${location.pathname.replace(/admin\.html$/, "")}order.html?id=${encodeURIComponent(o.id)}&k=${encodeURIComponent(o.key || "")}`;
+    const ov = editor(`Order ${esc(o.id)}`, `
+      <div class="cp-chips" style="margin:-8px 0 16px">${statusTag(o)}${o.env === "sandbox" ? `<span class="tag">Test payment</span>` : ""}</div>
+      <div class="sum-items">${o.items.map((i) => `<div class="sum-item"><span>${i.qty} × ${esc(i.type === "ticket" ? i.name + " · " + i.variant : i.name + " (" + i.variant + ")")}</span><span>${fmt(i.qty * i.price)}</span></div>`).join("")}</div>
+      ${o.deliveryFee ? `<div class="sum-row"><span>Delivery</span><span>${fmt(o.deliveryFee)}</span></div>` : ""}
+      <div class="sum-row total"><span>Total</span><span>${fmt(o.total)}</span></div>
+      <div class="cp-grid2" style="margin-top:18px">
+        <div><span class="label">Buyer</span><p>${esc(o.contact.name)}<br>${esc(o.email)}<br>${o.contact.phone ? "0" + esc(o.contact.phone) : ""}</p></div>
+        <div><span class="label">M-Pesa</span><p>Paid from 0${esc(o.mpesaPhone)}<br>${o.mpesaReceipt ? "Ref " + esc(o.mpesaReceipt) : o.status === "paid" ? "Ref pending" : esc(o.resultDesc || "")}<br><span class="muted">${esc(when(o.paidAt || o.createdAt))}</span></p></div>
+        ${o.delivery ? `<div><span class="label">Deliver to</span><p>${esc([o.delivery.street, o.delivery.area, o.delivery.town].join(", "))}<br>${esc(o.delivery.zone)} · call 0${esc(o.delivery.phone)}${o.delivery.notes ? "<br>" + esc(o.delivery.notes) : ""}</p></div>` : ""}
+        ${o.emailError ? `<div><span class="label">Email problem</span><p style="color:#ff8b96;font-size:13px">${esc(o.emailError)}</p></div>` : ""}
+      </div>
+      <div id="od-tix"></div>
+      <div class="cp-form-foot" style="flex-wrap:wrap;justify-content:flex-start">
+        ${o.status === "paid" ? `<button class="btn btn-ghost btn-sm" id="od-mail">${icon("mail")} Resend ticket email</button>` : ""}
+        ${o.key ? `<button class="btn btn-ghost btn-sm" id="od-link">Copy order link</button>` : ""}
+      </div>`);
+    const tl = $("#od-tix", ov);
+    if (o.status === "paid" && (o.ticketCodes || []).length) {
+      tl.innerHTML = `<p class="muted" style="font-size:13px">Loading tickets…</p>`;
+      try {
+        const snaps = await Promise.all(o.ticketCodes.map((c) => db.doc("tickets/" + c).get()));
+        tl.innerHTML = `<span class="label" style="margin-top:14px;display:block">Tickets</span>` + snaps.filter((s) => s.exists).map((s) => { const t = s.data();
+          return `<div class="cp-mini"><div><b style="font-family:monospace">${esc(t.code)}</b><small>${esc(t.tier)} · ${esc(t.eventTitle)}</small></div>${t.status === "used" ? `<span class="tag warn">Used ${esc(when(t.checkedInAt))}</span>` : `<span class="tag ok">Valid</span>`}</div>`; }).join("");
+      } catch (e) { tl.innerHTML = ""; }
+    }
+    const lk = $("#od-link", ov); if (lk) lk.addEventListener("click", async () => { try { await navigator.clipboard.writeText(link); toast("Link copied. Anyone with it can see this order.", "ok"); } catch { prompt("Order link:", link); } });
+    const ml = $("#od-mail", ov); if (ml) ml.addEventListener("click", async () => {
+      busy(ml, true, "Sending…");
+      try {
+        const r = await fetch(API("/api/resend-email"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await auth.currentUser.getIdToken()) }, body: JSON.stringify({ id: o.id }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || "Couldn't send.");
+        o.emailedAt = new Date(); delete o.emailError;
+        toast(`Ticket email sent to ${o.email}.`, "ok");
+      } catch (e) { toast(e.message, "err"); }
+      busy(ml, false);
+    });
+  }
+
+  /* =========================================================
+     GATE SCANNER
+     Reads the QR with the camera (BarcodeDetector where the browser has it, jsQR otherwise)
+     and checks the ticket in with a transaction, so a code can only ever get in once.
+     ========================================================= */
+  const scan = { stream: null, timer: null, detector: null, canvas: null, last: "", lastAt: 0, busy: false, eventId: "" };
+  const TICKET_RE = /^RR-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
+  function stopScan() {
+    clearTimeout(scan.timer); scan.timer = null;
+    if (scan.stream) scan.stream.getTracks().forEach((t) => t.stop());
+    scan.stream = null;
+  }
+  function loadJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    return new Promise((res, rej) => {
+      const el = document.createElement("script");
+      el.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+      el.onload = res; el.onerror = () => rej(new Error("Couldn't load the scanner. Check your connection."));
+      document.head.appendChild(el);
+    });
+  }
+  function vScan(m) {
+    const evs = S.events.filter((e) => Date.now() - new Date(e.date) < 2 * 864e5).concat(S.events.filter((e) => Date.now() - new Date(e.date) >= 2 * 864e5).reverse());
+    m.innerHTML = head("Gate scanner", "Scan tickets at the entrance. Each ticket gets in once; a second scan shows when it was used.") + `
+      <div class="scan-wrap">
+        <div class="panel">
+          <label class="label" for="sc-ev">Event at this gate</label>
+          <select class="input" id="sc-ev"><option value="">Any event</option>${evs.map((e) => `<option value="${esc(e.id)}" ${e.id === scan.eventId ? "selected" : ""}>${esc(e.title)} · ${esc(fmtDate(e.date))}</option>`).join("")}</select>
+          <div id="sc-count" class="muted" style="font-size:13px;margin-top:8px"></div>
+          <div class="scan-cam"><video id="sc-video" playsinline muted></video><div class="scan-frame"></div>
+            <button class="btn btn-primary" id="sc-start">${icon("qr")} Start camera</button></div>
+          <form id="sc-man" class="scan-man"><input class="input" id="sc-code" placeholder="Or type the code: RR-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn btn-ghost" type="submit">Check</button></form>
+        </div>
+        <div id="sc-result" class="scan-result idle"><div class="sr-ic">${icon("qr")}</div><h3>Ready</h3><p>Start the camera and point it at a ticket QR code.</p></div>
+      </div>`;
+    const sel = $("#sc-ev", m);
+    sel.addEventListener("change", () => { scan.eventId = sel.value; countIn(); });
+    countIn();
+    $("#sc-start", m).addEventListener("click", startCam);
+    $("#sc-man", m).addEventListener("submit", (ev) => { ev.preventDefault(); const c = $("#sc-code", m); checkIn(c.value); c.value = ""; });
+    if (scan.stream) startCam();
+  }
+  async function countIn() {
+    const el = $("#sc-count"); if (!el) return;
+    if (!scan.eventId) { el.textContent = ""; return; }
+    el.textContent = "Counting…";
+    try {
+      const q = await db.collection("tickets").where("eventId", "==", scan.eventId).get();
+      const used = q.docs.filter((d) => d.data().status === "used").length;
+      if ($("#sc-count")) $("#sc-count").textContent = `${used} of ${q.size} ticket${q.size === 1 ? "" : "s"} checked in`;
+    } catch (e) { el.textContent = ""; }
+  }
+  async function startCam() {
+    const btn = $("#sc-start"), video = $("#sc-video");
+    if (!video) return;
+    try {
+      if (!scan.stream) {
+        if (btn) busy(btn, true, "Starting…");
+        scan.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      }
+      if ("BarcodeDetector" in window && !scan.detector) {
+        try { const f = await window.BarcodeDetector.getSupportedFormats(); if (f.includes("qr_code")) scan.detector = new window.BarcodeDetector({ formats: ["qr_code"] }); } catch (_) {}
+      }
+      if (!scan.detector) await loadJsQR();
+      video.srcObject = scan.stream; await video.play();
+      if (btn) btn.style.display = "none";
+      video.parentElement.classList.add("on");
+      loop();
+    } catch (e) {
+      stopScan();
+      if (btn) busy(btn, false);
+      showResult("bad", "Camera not available", e && e.name === "NotAllowedError" ? "Allow camera access for this site in your browser settings, then try again." : (e.message || "Use the code box instead."));
+    }
+  }
+  async function loop() {
+    const video = $("#sc-video");
+    if (!scan.stream || !video) return;
+    if (!scan.busy && video.readyState >= 2) {
+      let code = "";
+      try {
+        if (scan.detector) { const r = await scan.detector.detect(video); code = r[0] ? r[0].rawValue : ""; }
+        else if (window.jsQR) {
+          const w = video.videoWidth, h = video.videoHeight, k = Math.min(1, 640 / Math.max(w, h));
+          const c = scan.canvas || (scan.canvas = document.createElement("canvas"));
+          c.width = Math.round(w * k); c.height = Math.round(h * k);
+          const ctx = c.getContext("2d", { willReadFrequently: true }); ctx.drawImage(video, 0, 0, c.width, c.height);
+          const r = window.jsQR(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height, { inversionAttempts: "dontInvert" });
+          code = r ? r.data : "";
+        }
+      } catch (_) {}
+      code = (code || "").trim().toUpperCase();
+      if (code && !(code === scan.last && Date.now() - scan.lastAt < 4000)) { scan.last = code; scan.lastAt = Date.now(); await checkIn(code); }
+    }
+    scan.timer = setTimeout(loop, 180);
+  }
+  function showResult(kind, title, text, extra = "") {
+    const el = $("#sc-result"); if (!el) return;
+    const ic = { ok: "check", used: "close", bad: "close", wrong: "info", busy: "qr" }[kind] || "qr";
+    el.className = "scan-result " + kind;
+    el.innerHTML = `<div class="sr-ic">${kind === "busy" ? '<span class="spinner" style="width:28px;height:28px"></span>' : icon(ic)}</div><h3>${title}</h3><p>${text}</p>${extra}`;
+    if (navigator.vibrate) navigator.vibrate(kind === "ok" ? 80 : [60, 60, 60]);
+  }
+  async function checkIn(raw) {
+    const code = String(raw || "").trim().toUpperCase();
+    if (!code) return;
+    if (!TICKET_RE.test(code)) return showResult("bad", "Not a Rada Republic ticket", `The code “${esc(code.slice(0, 40))}” isn't one of ours.`);
+    scan.busy = true;
+    showResult("busy", "Checking…", esc(code));
+    const ref = db.doc("tickets/" + code);
+    try {
+      const r = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) return { kind: "bad" };
+        const t = snap.data();
+        if (scan.eventId && t.eventId !== scan.eventId) return { kind: "wrong", t };
+        if (t.status === "used") return { kind: "used", t };
+        tx.update(ref, { status: "used", checkedInAt: TS(), checkedInBy: auth.currentUser.uid });
+        return { kind: "ok", t };
+      });
+      const t = r.t;
+      if (r.kind === "bad") showResult("bad", "Ticket not found", `${esc(code)} isn't a ticket we issued. Don't let them in.`);
+      else if (r.kind === "used") showResult("used", "Already used", `${esc(t.tier)} · ${esc(t.name)}<br>Checked in ${esc(when(t.checkedInAt))}.`);
+      else if (r.kind === "wrong") showResult("wrong", "Different event", `This ticket is for <b>${esc(t.eventTitle)}</b> (${esc(fmtDate(t.eventDate))}), not the event selected at this gate.`);
+      else {
+        showResult("ok", "Admit 1", `<b>${esc(t.tier)}</b> · ${esc(t.name)}<br>${esc(t.eventTitle)}`, `<button class="btn btn-ghost btn-sm" id="sc-undo">Undo check-in</button>`);
+        const u = $("#sc-undo"); if (u) u.addEventListener("click", async () => {
+          try { await ref.update({ status: "valid", checkedInAt: null, checkedInBy: null }); showResult("idle", "Check-in undone", `${esc(code)} can be scanned again.`); countIn(); }
+          catch (e) { fail(e, "undo"); }
+        });
+        countIn();
+      }
+    } catch (e) {
+      console.error(e);
+      showResult("bad", "Couldn't check that ticket", e.code === "permission-denied" ? "The database rules need updating (see the setup notes)." : "Check your connection and scan again.");
+    }
+    scan.busy = false;
   }
 
   /* =========================================================

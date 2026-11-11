@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111f">
+  <link rel="stylesheet" href="css/styles.css?v=20261112a">
 </head>
 <body data-page="order">
   <div id="site-header"></div>
@@ -19,51 +19,82 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js?v=20261111f"></script>
-  <script src="js/data.js?v=20261111f"></script>
-  <script src="js/app.js?v=20261111f"></script>
+  <script src="js/firebase-config.js?v=20261112a"></script>
+  <script src="js/data.js?v=20261112a"></script>
+  <script src="js/app.js?v=20261112a"></script>
   <script>
     RR.ready(function () {
       const { $, $$, icon, esc, fmt } = RR;
-      const o = RR.getOrder(RR.qs("id"));
-      if (!o) {
-        $("#root").innerHTML = `<div class="empty"><div class="em-ic">${icon("info")}</div><h2>Order not found</h2><p>Check the link in your confirmation email.</p><div class="actions"><a class="btn btn-primary" href="index.html">Back home</a></div></div>`;
-        return;
+      const id = RR.qs("id") || "", key = RR.qs("k") || "";
+      const msg = (title, text, ic = "info", extra = "") => { $("#root").innerHTML = `<div class="empty"><div class="em-ic">${ic === "spin" ? '<span class="spinner" style="width:30px;height:30px"></span>' : icon(ic)}</div><h2>${title}</h2><p>${text}</p>${extra || '<div class="actions"><a class="btn btn-primary" href="index.html">Back home</a></div>'}</div>`; };
+      let tries = 0;
+
+      async function load() {
+        const r = await RR.orderStatus(id, key);
+        if (!r.order) {
+          if (r.status === 404 && !RR.currentUser()) {
+            msg("Order not found", "Open the link in your confirmation email, or log in with the account you used.", "info",
+              `<div class="actions"><button class="btn btn-primary" id="ol">Log in</button><a class="btn btn-ghost" href="index.html">Back home</a></div>`);
+            $("#ol").addEventListener("click", () => RR.openAuth("login", { onSuccess: () => location.reload() }));
+            return;
+          }
+          return msg(r.status === 404 ? "Order not found" : "Couldn't load your order", r.status === 404 ? "Check the link in your confirmation email." : esc(r.error));
+        }
+        const o = r.order;
+        if (o.status === "pending") {
+          msg("Waiting for your M-Pesa payment", `Order ${esc(o.id)} · ${fmt(o.total)}. Enter your PIN on the prompt sent to ${esc(RR.prettyPhone(o.mpesaPhone))}. This page updates by itself.`, "spin", " ");
+          if (++tries < 80) setTimeout(load, 4000);
+          return;
+        }
+        if (o.status !== "paid") return msg("Payment not completed", `${esc(o.message)} Nothing was charged for order ${esc(o.id)}.`, "info",
+          `<div class="actions"><a class="btn btn-primary" href="cart.html">Back to cart</a></div>`);
+        render(o, r.tickets);
       }
-      const tickets = RR.orderTickets(o.id);
-      const merch = o.items.filter((i) => i.type === "merch");
-      const u = RR.currentUser();
-      $("#root").innerHTML = `
-        <div class="confirm-hero">
-          <div class="tick">${icon("check")}</div>
-          <span class="eyebrow">Order ${esc(o.id)}</span>
-          <h1 class="h2" style="margin:10px 0 12px">You're all set, ${esc(o.contact.name.split(" ")[0])}!</h1>
-          <p class="lead" style="margin:0 auto">Payment of <b style="color:var(--text)">${fmt(o.total)}</b> received via M-Pesa (ref ${esc(o.mpesaRef)}).
-          ${tickets.length ? `Your QR ticket${tickets.length > 1 ? "s have" : " has"} been sent to <b style="color:var(--text)">${esc(o.contact.email)}</b>.` : `A receipt has been sent to <b style="color:var(--text)">${esc(o.contact.email)}</b>.`}</p>
-        </div>
 
-        ${tickets.length ? `<div class="section-head"><div><span class="eyebrow">Show these at the gate</span><h2 class="h3" style="margin-top:6px">Your tickets (${tickets.length})</h2></div>
-          ${u ? `<a class="see-all" href="tickets.html">My Tickets ${icon("arrow")}</a>` : ""}</div>
-          <div class="qr-grid">${tickets.map((t, i) => { const e = RR.getEvent(t.eventId); return `<div class="qr-card">
-            <span class="tag pink">${esc(t.tier)}</span><b>${esc(e.title)}</b>
-            <span class="muted" style="font-size:13px">${esc(RR.fmtDate(e.date))} · ${esc(RR.fmtTime(e.date))}</span>
-            <div class="qr-box" data-qr="${esc(t.code)}"></div>
-            <span class="ticket-code">${esc(t.code)}</span></div>`; }).join("")}</div>` : ""}
+      function render(o, tickets) {
+        const merch = o.items.filter((i) => i.type === "merch");
+        const u = RR.currentUser();
+        const many = tickets.length > 1;
+        $("#root").innerHTML = `
+          <div class="confirm-hero">
+            <div class="tick">${icon("check")}</div>
+            <span class="eyebrow">Order ${esc(o.id)}</span>
+            <h1 class="h2" style="margin:10px 0 12px">You're all set, ${esc(o.contact.name.split(" ")[0])}!</h1>
+            <p class="lead" style="margin:0 auto">Payment of <b style="color:var(--text)">${fmt(o.total)}</b> received via M-Pesa${o.mpesaReceipt ? ` (ref ${esc(o.mpesaReceipt)})` : ""}.
+            ${tickets.length ? (o.emailed ? `Your QR ticket${many ? "s have" : " has"} been sent to <b style="color:var(--text)">${esc(o.email)}</b>.` : `Your QR ticket${many ? "s are" : " is"} below, and a copy is on its way to <b style="color:var(--text)">${esc(o.email)}</b>.`)
+              : `A receipt has been sent to <b style="color:var(--text)">${esc(o.email)}</b>.`}</p>
+            ${o.test ? `<span class="test-note">${icon("info")} Test payment (M-Pesa sandbox)</span>` : ""}
+          </div>
 
-        ${merch.length ? `<div class="panel" style="margin-top:28px">
-          <div class="panel-title"><span class="num">${icon("truck")}</span><div><h3>Merch delivery</h3><p>We'll call ${esc(RR.prettyPhone(o.delivery.phone))} to arrange delivery within 1–3 days.</p></div></div>
-          <div class="sum-items">${merch.map((x) => `<div class="sum-item"><span>${x.qty} × ${esc(x.name)} (${esc(x.variant)})</span><span>${fmt(x.qty * x.price)}</span></div>`).join("")}</div>
-          <p class="muted" style="font-size:14px">${icon("pin")} ${esc([o.delivery.street, o.delivery.area, o.delivery.town].join(", "))}${o.delivery.notes ? " · " + esc(o.delivery.notes) : ""}</p>
-        </div>` : ""}
+          ${tickets.length ? `<div class="section-head"><div><span class="eyebrow">Show these at the gate</span><h2 class="h3" style="margin-top:6px">Your tickets (${tickets.length})</h2></div>
+            ${u ? `<a class="see-all" href="tickets.html">My Tickets ${icon("arrow")}</a>` : ""}</div>
+            <div class="qr-grid">${tickets.map((t) => `<div class="qr-card">
+              <span class="tag pink">${esc(t.tier)}</span><b>${esc(t.eventTitle)}</b>
+              <span class="muted" style="font-size:13px">${t.eventDate ? `${esc(RR.fmtDate(t.eventDate))} · ${esc(RR.fmtTime(t.eventDate))}` : ""}</span>
+              <div class="qr-box" data-qr="${esc(t.code)}"></div>
+              <span class="ticket-code">${esc(t.code)}</span>${t.status === "used" ? `<span class="tag warn">Already used</span>` : ""}</div>`).join("")}</div>` : ""}
 
-        ${!u ? `<div class="panel" style="margin-top:28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-          <div><h3 class="h3">Keep your tickets in one place</h3><p class="muted">Create a free account with ${esc(o.contact.email)} and all your tickets show up in My Tickets.</p></div>
-          <button class="btn btn-grad" id="mk-acct">Create account</button></div>` : ""}
+          ${merch.length ? `<div class="panel" style="margin-top:28px">
+            <div class="panel-title"><span class="num">${icon("truck")}</span><div><h3>Merch delivery</h3><p>${o.fulfilment === "delivered" ? "Delivered." : `We'll call ${esc(RR.prettyPhone(o.delivery.phone))} to arrange delivery within 1–3 days.`}</p></div></div>
+            <div class="sum-items">${merch.map((x) => `<div class="sum-item"><span>${x.qty} × ${esc(x.name)} (${esc(x.variant)})</span><span>${fmt(x.qty * x.price)}</span></div>`).join("")}</div>
+            <p class="muted" style="font-size:14px">${icon("pin")} ${esc([o.delivery.street, o.delivery.area, o.delivery.town].join(", "))}${o.delivery.notes ? " · " + esc(o.delivery.notes) : ""}</p>
+          </div>` : ""}
 
-        <div style="display:flex;gap:12px;justify-content:center;margin-top:36px;flex-wrap:wrap">
-          <a class="btn btn-primary" href="events.html">Explore more events</a><a class="btn btn-ghost" href="merch.html">Shop merch</a></div>`;
-      $$("[data-qr]").forEach((el) => RR.renderQR(el, el.dataset.qr));
-      const mk = $("#mk-acct"); if (mk) mk.addEventListener("click", () => RR.openAuth("signup", { onSuccess: () => location.reload() }));
+          ${!u ? `<div class="panel" style="margin-top:28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div><h3 class="h3">Keep your tickets in one place</h3><p class="muted">Create a free account with ${esc(o.email)} and all your tickets show up in My Tickets.</p></div>
+            <button class="btn btn-grad" id="mk-acct">Create account</button></div>` : ""}
+
+          <div style="display:flex;gap:12px;justify-content:center;margin-top:36px;flex-wrap:wrap">
+            <a class="btn btn-primary" href="events.html">Explore more events</a><a class="btn btn-ghost" href="merch.html">Shop merch</a></div>`;
+        $$("[data-qr]").forEach((el) => RR.renderQR(el, el.dataset.qr));
+        const mk = $("#mk-acct"); if (mk) mk.addEventListener("click", () => RR.openAuth("signup", { onSuccess: () => location.reload() }));
+      }
+
+      if (!/^RR-[A-Z2-9]{7}$/.test(id)) return msg("Order not found", "Check the link in your confirmation email.");
+      msg("Loading your order…", "", "spin", " ");
+      // Without the link key, wait for sign-in to settle so the signed-in owner can open it.
+      const a = RR.auth();
+      if (a && !key) { const un = a.onAuthStateChanged(() => { un(); load(); }); } else load();
     });
   </script>
 </body>

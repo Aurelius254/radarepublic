@@ -2,8 +2,11 @@
   "name": "radarepublic",
   "private": true,
   "description": "Rada Republic: tickets and merch. Static site + Netlify functions + Firebase.",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "firebase-admin": "^12.7.0"
+    "firebase-admin": "^12.7.0",
+    "qrcode": "^1.5.4"
   }
 }

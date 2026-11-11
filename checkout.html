@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111f">
+  <link rel="stylesheet" href="css/styles.css?v=20261112a">
 </head>
 <body data-page="checkout">
   <div id="site-header"></div>
@@ -21,9 +21,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js?v=20261111f"></script>
-  <script src="js/data.js?v=20261111f"></script>
-  <script src="js/app.js?v=20261111f"></script>
+  <script src="js/firebase-config.js?v=20261112a"></script>
+  <script src="js/data.js?v=20261112a"></script>
+  <script src="js/app.js?v=20261112a"></script>
   <script>
     RR.ready(function () {
       const { $, $$, icon, esc, fmt } = RR;
@@ -109,46 +109,78 @@
           const firstBad = Object.keys(errs).find((k) => errs[k]);
           if (firstBad) { $("#" + firstBad).focus(); $("#" + firstBad).scrollIntoView({ behavior: "smooth", block: "center" }); return; }
           const fee = totals();
-          stkPush({
-            items: RR.cart(), deliveryFee: fee, mpesaPhone: v("co-mpesa"),
+          const z = hasM ? RR_DATA.delivery.find((d) => d.id === zone) : null;
+          pay({
+            items: RR.cart().map((x) => ({ type: x.type, id: x.id, variant: x.variant, qty: x.qty })),
+            mpesaPhone: RR.normPhone(v("co-mpesa")),
             contact: { name: v("co-name").trim(), email: v("co-email").trim(), phone: hasM ? RR.normPhone(v("co-phone")) : RR.normPhone(v("co-mpesa")) },
-            delivery: hasM ? { zone: RR_DATA.delivery.find((d) => d.id === zone).name, town: v("co-town").trim(), area: v("co-area").trim(), street: v("co-street").trim(), notes: v("co-notes").trim(), phone: RR.normPhone(v("co-phone")) } : null
+            delivery: hasM ? { zoneId: z.id, town: v("co-town").trim(), area: v("co-area").trim(), street: v("co-street").trim(), notes: v("co-notes").trim(), phone: RR.normPhone(v("co-phone")) } : null
           }, RR.cartSubtotal() + fee);
         });
       }
 
-      /* ---- M-Pesa STK push (SIMULATED) ----
-         BACKEND: POST /api/payments/stk { orderDraft, phone, amount }
-           → server calls Safaricom Daraja STK Push
-           → poll GET /api/payments/:checkoutRequestId (or use websocket)
-           → on success, server issues tickets & emails QR codes. */
-      function stkPush(draft, amount) {
-        let cancelled = false;
+      /* ---- M-Pesa STK push ----
+         /api/checkout prices the order on the server and sends the prompt to the phone.
+         We then poll /api/order-status until Safaricom says paid, cancelled or failed. */
+      let paying = false;
+      async function pay(draft, amount) {
+        if (paying) return; paying = true;
+        const btn = $("#pay"), html = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> Sending the M-Pesa prompt…`;
+        const res = await RR.placeOrder(draft);
+        btn.disabled = false; btn.innerHTML = html; paying = false;
+        if (!res.id) { RR.toast(res.error, "err"); return; }
+        waitForPayment(res, draft.mpesaPhone);
+      }
+
+      function waitForPayment({ id, key, total }, phone) {
+        let stopped = false, timer = null;
+        const started = Date.now();
         const o = RR.openModal(`<div class="stk" id="stk">
             <div class="phone-ill">${icon("mobile")}</div>
             <h2>Check your phone</h2>
-            <p class="sub">We've sent an M-Pesa prompt for <b style="color:var(--text)">${fmt(amount)}</b> to <b style="color:var(--text)">+254 ${esc(RR.prettyPhone(draft.mpesaPhone).slice(1))}</b>. Enter your M-Pesa PIN to complete payment.</p>
+            <p class="sub">We've sent an M-Pesa prompt for <b style="color:var(--text)">${fmt(total)}</b> to <b style="color:var(--text)">${esc(RR.prettyPhone(phone))}</b>. Enter your M-Pesa PIN to pay.</p>
             <div class="stk-steps">
               <div class="on" data-s="1"><span class="dot">${icon("check")}</span> Prompt sent to your phone</div>
-              <div data-s="2"><span class="dot"></span> Waiting for you to enter your PIN…</div>
+              <div data-s="2"><span class="dot"><span class="spinner" style="width:14px;height:14px"></span></span> <span>Waiting for you to enter your PIN…</span></div>
               <div data-s="3"><span class="dot"></span> Payment confirmed</div>
             </div>
-            <button class="btn btn-ghost btn-block" id="stk-cancel">Cancel</button>
-            <p class="secure" style="margin-top:14px">Didn't get it? Make sure your phone is on and unlocked.</p>
-          </div>`, { onClose: () => (cancelled = true) });
+            <div id="stk-msg"></div>
+            <button class="btn btn-ghost btn-block" id="stk-cancel">Close</button>
+            <p class="secure" style="margin-top:14px" id="stk-tip">Didn't get it? Make sure your phone is on and unlocked. The prompt lasts about a minute.</p>
+          </div>`, { onClose: () => { stopped = true; clearTimeout(timer); } });
         $("#stk-cancel", o).addEventListener("click", () => RR.closeModal());
-        const set = (s, html) => { const el = $(`[data-s="${s}"]`, o); if (!el) return; el.classList.add("on"); $(".dot", el).innerHTML = icon("check"); if (html) el.lastChild.textContent = " " + html; };
-        setTimeout(() => { if (cancelled) return; const el = $('[data-s="2"] .dot', o); if (el) el.innerHTML = '<span class="spinner" style="width:14px;height:14px"></span>'; }, 600);
-        setTimeout(() => {
-          if (cancelled) return;
-          set(2, "PIN entered"); set(3);
+
+        const done = (order) => {
           $("#stk", o).classList.add("done");
+          const s2 = $('[data-s="2"]', o), s3 = $('[data-s="3"]', o);
+          s2.classList.add("on"); $(".dot", s2).innerHTML = icon("check"); s2.lastElementChild.textContent = "PIN entered";
+          s3.classList.add("on"); $(".dot", s3).innerHTML = icon("check");
           $("h2", o).textContent = "Payment received!";
-          $("#stk-cancel", o).outerHTML = `<button class="btn btn-primary btn-block" disabled><span class="spinner"></span> Issuing your order…</button>`;
-          const order = RR.createOrder(draft);
+          $("#stk-tip", o).remove();
+          $("#stk-cancel", o).outerHTML = `<button class="btn btn-primary btn-block" disabled><span class="spinner"></span> Opening your order…</button>`;
           RR.clearCart();
-          setTimeout(() => { location.href = "order.html?id=" + order.id; }, 1100);
-        }, 4200);
+          setTimeout(() => { location.href = `order.html?id=${encodeURIComponent(id)}&k=${encodeURIComponent(key)}`; }, 1000);
+        };
+        const failed = (msg) => {
+          $(".phone-ill", o).classList.add("fail");
+          $("h2", o).textContent = "Payment not completed";
+          $('[data-s="2"] .dot', o).innerHTML = "";
+          $("#stk-msg", o).innerHTML = `<div class="form-err" style="display:block;margin:4px 0 14px">${esc(msg || "The payment didn't go through.")}</div>`;
+          $("#stk-tip", o).textContent = "Nothing was charged. You can try again.";
+          const b = $("#stk-cancel", o); b.className = "btn btn-primary btn-block"; b.textContent = "Try again";
+        };
+        const poll = async () => {
+          if (stopped) return;
+          const r = await RR.orderStatus(id, key);
+          if (stopped) return;
+          const st = r.order && r.order.status;
+          if (st === "paid") return done(r.order);
+          if (st === "failed" || st === "cancelled") return failed(r.order.message);
+          if (Date.now() - started > 5 * 60e3) return failed("We didn't hear back from M-Pesa. If money left your account, your tickets will still be emailed to you.");
+          timer = setTimeout(poll, Date.now() - started < 60e3 ? 3000 : 5000);
+        };
+        timer = setTimeout(poll, 4000);
       }
 
       document.addEventListener("rr:auth", render);

@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111f">
+  <link rel="stylesheet" href="css/styles.css?v=20261112a">
 </head>
 <body data-page="profile">
   <div id="site-header"></div>
@@ -18,19 +18,16 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js?v=20261111f"></script>
-  <script src="js/data.js?v=20261111f"></script>
-  <script src="js/app.js?v=20261111f"></script>
-  <script src="js/account.js?v=20261111f"></script>
+  <script src="js/firebase-config.js?v=20261112a"></script>
+  <script src="js/data.js?v=20261112a"></script>
+  <script src="js/app.js?v=20261112a"></script>
+  <script src="js/account.js?v=20261112a"></script>
   <script>
     RR.ready(function () {
       const { $, icon, esc, fmt } = RR;
       function render() {
         const u = RR.currentUser();
         if (!u) return RR.signedOut($("#root"), "Sign in to see your profile");
-        const tix = RR.userTickets(u), orders = RR.userOrders(u);
-        const upcoming = tix.filter((t) => new Date(RR.getEvent(t.eventId).date) >= new Date()).length;
-        const spent = orders.reduce((s, o) => s + o.total, 0);
         const since = new Date(u.joined).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
         const hasPassword = (u.providers || []).includes("password");
 
@@ -43,9 +40,9 @@
             ${RR.accountNav("profile")}
             <div>
               <div class="profile-stats">
-                <div class="stat"><b class="grad-text">${upcoming}</b><span>Upcoming tickets</span></div>
-                <div class="stat"><b class="grad-text">${orders.length}</b><span>Orders</span></div>
-                <div class="stat"><b class="grad-text">${fmt(spent)}</b><span>Total spent</span></div>
+                <div class="stat"><b class="grad-text" id="st-up">…</b><span>Upcoming tickets</span></div>
+                <div class="stat"><b class="grad-text" id="st-or">…</b><span>Orders</span></div>
+                <div class="stat"><b class="grad-text" id="st-sp">…</b><span>Total spent</span></div>
               </div>
 
               <form class="panel" id="pf" novalidate>
@@ -72,6 +69,12 @@
               </form>`}
             </div>
           </div>`;
+        Promise.all([RR.userTickets(), RR.userOrders()]).then(([tix, orders]) => {
+          const set = (id, v) => { const el = $("#" + id); if (el) el.textContent = v; };
+          set("st-up", tix.filter((t) => t.status !== "used" && new Date(t.e.date) >= new Date()).length);
+          set("st-or", orders.length);
+          set("st-sp", fmt(orders.reduce((s, o) => s + (o.total || 0), 0)));
+        });
 
         RR.wireAccountNav();
         $("#pf").addEventListener("submit", async (e) => {

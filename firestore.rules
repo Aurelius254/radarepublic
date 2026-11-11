@@ -62,13 +62,21 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid)
         || (verifiedEmail() && resource.data.email == request.auth.token.email);
-      allow write: if false;
+      // Admins can only track merch delivery and add a note; payment fields stay server-only.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fulfilment', 'adminNote', 'deliveredAt'])
+        && request.resource.data.fulfilment in ['to-deliver', 'delivered', null];
+      allow create, delete: if false;
     }
     match /tickets/{ticketId} {
       allow read: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid)
         || (verifiedEmail() && resource.data.email == request.auth.token.email);
-      allow write: if false;
+      // Gate check-in by admins: only the check-in fields can change.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'checkedInAt', 'checkedInBy'])
+        && request.resource.data.status in ['valid', 'used'];
+      allow create, delete: if false;
     }
 
     // ---------- Public catalogue & site content (admin-managed) ----------

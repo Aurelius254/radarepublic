@@ -420,30 +420,51 @@
   }
 
   /* =========================================================
-     ORDERS & TICKETS (mock)
-     BACKEND: create order → trigger M-Pesa STK push (Daraja) →
-     on callback success, issue tickets + email QR codes.
+     ORDERS & TICKETS (real: Netlify functions + Firestore)
+     /api/checkout creates the order and sends the M-Pesa prompt;
+     Safaricom's callback marks it paid and issues the tickets.
      ========================================================= */
-  function createOrder({ items, contact, delivery, mpesaPhone, deliveryFee }) {
-    const user = currentUser();
-    const id = "RR-" + rid(6);
-    const tickets = [];
-    items.filter((i) => i.type === "ticket").forEach((i) => {
-      for (let n = 0; n < i.qty; n++) tickets.push({ code: `RR-${rid(4)}-${rid(4)}`, orderId: id, eventId: i.id, tier: i.variant, price: i.price, email: contact.email, name: contact.name, userId: user ? user.id : null, issued: new Date().toISOString() });
+  async function api(path, body, withAuth = true) {
+    const headers = { "Content-Type": "application/json" };
+    if (withAuth && auth && auth.currentUser) { try { headers.Authorization = "Bearer " + (await auth.currentUser.getIdToken()); } catch (_) {} }
+    let r;
+    try { r = await fetch(API(path), { method: "POST", headers, body: JSON.stringify(body || {}) }); }
+    catch (e) { return { error: "No connection. Check your internet and try again.", status: 0 }; }
+    const j = await r.json().catch(() => ({}));
+    return r.ok ? j : { ...j, error: j.error || "Something went wrong. Try again.", status: r.status };
+  }
+  // Remember recent orders on this device so guests can find them again.
+  const RECENT = "rr_recent_orders";
+  const rememberOrder = (id, key) => store.set(RECENT, [{ id, key, at: Date.now() }, ...store.get(RECENT, []).filter((x) => x.id !== id)].slice(0, 20));
+  const orderKey = (id) => (store.get(RECENT, []).find((x) => x.id === id) || {}).key || "";
+  async function placeOrder(draft) {
+    const r = await api("/api/checkout", draft);
+    if (r.id) rememberOrder(r.id, r.key);
+    return r;
+  }
+  const orderStatus = (id, key) => api("/api/order-status", { id, key: key || orderKey(id) });
+
+  // Tickets and orders for the signed-in account: linked by account, or by a verified email (guest purchases).
+  const authSettled = auth ? new Promise((res) => { const un = auth.onAuthStateChanged(() => { un(); res(); }); }) : Promise.resolve();
+  async function mine(col) {
+    await authSettled;
+    const u = auth && auth.currentUser; if (!u || !db) return [];
+    const queries = [db.collection(col).where("uid", "==", u.uid).get()];
+    if (u.emailVerified && u.email) queries.push(db.collection(col).where("email", "==", u.email.toLowerCase()).get());
+    const res = await Promise.all(queries.map((q) => q.catch((e) => { console.warn(col, e.message); return { docs: [] }; })));
+    const map = new Map();
+    res.forEach((r) => r.docs.forEach((d) => map.set(d.id, { ...d.data(), id: d.id })));
+    return [...map.values()];
+  }
+  async function userTickets() {
+    return (await mine("tickets")).map((t) => {
+      const live = getEvent(t.eventId);
+      // The ticket keeps a copy of the event details, so it still shows if the event is later edited or removed.
+      const e = live || { id: t.eventId, title: t.eventTitle, date: t.eventDate, venue: t.venue, city: t.city, image: t.image, a: t.a || "#ff2e93", b: t.b || "#b44dff", category: "" };
+      return { ...t, e };
     });
-    const subtotal = items.reduce((s, x) => s + x.qty * x.price, 0);
-    const order = { id, items, contact, delivery: delivery || null, deliveryFee: deliveryFee || 0, subtotal, total: subtotal + (deliveryFee || 0), mpesaPhone: normPhone(mpesaPhone), mpesaRef: "S" + rid(9), userId: user ? user.id : null, created: new Date().toISOString(), status: "paid" };
-    store.set("rr_orders", [...store.get("rr_orders", []), order]);
-    store.set("rr_tickets", [...store.get("rr_tickets", []), ...tickets]);
-    return order;
   }
-  const getOrder = (id) => store.get("rr_orders", []).find((o) => o.id === id);
-  const orderTickets = (id) => store.get("rr_tickets", []).filter((t) => t.orderId === id);
-  function userTickets(u = currentUser()) {
-    if (!u) return [];
-    return store.get("rr_tickets", []).filter((t) => t.userId === u.id || (t.email || "").toLowerCase() === u.email.toLowerCase());
-  }
-  const userOrders = (u = currentUser()) => (u ? store.get("rr_orders", []).filter((o) => o.userId === u.id || o.contact.email.toLowerCase() === u.email.toLowerCase()) : []);
+  async function userOrders() { return (await mine("orders")).filter((o) => o.status === "paid"); }
 
   /* ---------- QR ---------- */
   function renderQR(el, text) {
@@ -825,7 +846,7 @@
     getEvent, getProduct, upcomingEvents, featuredEvent, initials,
     currentUser, updateUser, changePassword, logout, openAuth, normPhone, validPhone, validEmail, prettyPhone, saveMessage, subscribe,
     cart, addToCart, setQty, removeItem, clearCart, cartCount, cartSubtotal, cartThumb,
-    createOrder, getOrder, orderTickets, userTickets, userOrders, renderQR,
+    placeOrder, orderStatus, orderKey, userTickets, userOrders, renderQR, api,
     openModal, closeModal, phoneField, fieldErr, toast, socialsHTML, initReveal, ready, SAMPLE, db: () => db, auth: () => auth, fetchCatalog
   };
 
