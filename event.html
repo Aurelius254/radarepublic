@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111b">
+  <link rel="stylesheet" href="css/styles.css?v=20261111c">
 </head>
 <body data-page="events">
   <div id="site-header"></div>
@@ -19,11 +19,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js?v=20261111b"></script>
-  <script src="js/data.js?v=20261111b"></script>
-  <script src="js/app.js?v=20261111b"></script>
+  <script src="js/firebase-config.js?v=20261111c"></script>
+  <script src="js/data.js?v=20261111c"></script>
+  <script src="js/app.js?v=20261111c"></script>
   <script>
-    (function () {
+    RR.ready(function () {
       const { $, $$, icon, esc, fmt, fmtDate, fmtTime } = RR;
       const e = RR.getEvent(RR.qs("id"));
       if (!e) {
@@ -101,7 +101,7 @@
 
       const more = RR.upcomingEvents().filter((x) => x.id !== e.id).slice(0, 4);
       $("#more").innerHTML = `<div class="section-head"><h2 class="h2" style="font-size:30px">More events</h2><a class="see-all" href="events.html">See all ${icon("arrow")}</a></div><div class="ev-grid ev-row">${more.map((x) => RR.eventCard(x)).join("")}</div>`;
-    })();
+    });
   </script>
 </body>
 </html>

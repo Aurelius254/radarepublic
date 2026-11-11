@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111b">
+  <link rel="stylesheet" href="css/styles.css?v=20261111c">
   <script>if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("tw");</script>
 </head>
 <body class="home" data-page="home">
@@ -22,7 +22,7 @@
       <span class="glow purple" style="width:480px;height:480px;right:-180px;top:60px"></span>
       <div class="container hero-grid">
         <div>
-          <span class="pill">Now selling · Eldoret &amp; beyond</span>
+          <span class="pill" id="hero-badge">Now selling · Eldoret &amp; beyond</span>
           <h1 class="hero-title"><span class="solid">Welcome to the</span><span class="outline">Republic</span></h1>
           <!-- Rada Republic texts the visitor: "Got nothing on? We've got you." -->
           <div class="rada-chat" role="img" aria-label="Rada Republic: Huna rada? Tuko na form.">
@@ -111,10 +111,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js?v=20261111b"></script>
-  <script src="js/data.js?v=20261111b"></script>
-  <script src="js/app.js?v=20261111b"></script>
-  <script src="js/feature.js?v=20261111b"></script>
+  <script src="js/firebase-config.js?v=20261111c"></script>
+  <script src="js/data.js?v=20261111c"></script>
+  <script src="js/app.js?v=20261111c"></script>
+  <script src="js/feature.js?v=20261111c"></script>
   <script>
     // Typewriter: REPUBLIC types itself out with a blinking gold cursor
     (function () {
@@ -141,15 +141,16 @@
       setTimeout(start, 1500);   // safety net if fonts are slow
     })();
 
-    (function () {
+    RR.ready(function () {
       const ev = RR.upcomingEvents();
       // hero poster stack
       const pick = [ev[1] || ev[0], ev[2] || ev[0], RR.featuredEvent()];
       RR.$("#hero-visual").innerHTML = pick.map((e, i) => `<a href="event.html?id=${e.id}" class="stack s${i + 1}">${RR.poster(e, i === 2 ? "lg" : "")}</a>`).join("");
       RR.$("#home-events").innerHTML = ev.slice(0, 4).map((e) => RR.eventCard(e, { price: false })).join("");
-      RR.$("#home-merch").innerHTML = RR_DATA.products.slice(0, 4).map(RR.productCard).join("");
+      RR.$("#home-merch").innerHTML = [...RR_DATA.products].sort((x, y) => (y.featured ? 1 : 0) - (x.featured ? 1 : 0)).slice(0, 4).map(RR.productCard).join("");
+      if (RR_DATA.heroBadge) RR.$("#hero-badge").textContent = RR_DATA.heroBadge;
       RR.renderFeature(RR.$("#home-feature"), RR.featuredEvent(), "Book Now");
-    })();
+    });
   </script>
 </body>
 </html>

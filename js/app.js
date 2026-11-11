@@ -9,6 +9,7 @@
 (function () {
   "use strict";
   const D = window.RR_DATA;
+  const SAMPLE = JSON.parse(JSON.stringify(D));   // bundled starter data, before the database overrides it
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
@@ -96,8 +97,9 @@
 
   /* ---------- visuals ---------- */
   function poster(e, size = "") {
-    const img = e.image ? `<img class="real" src="${esc(e.image)}" alt="">` : "";
-    return `<div class="poster ${size}" style="--a:${e.a};--b:${e.b}">
+    if (e.image) return `<div class="poster has-img ${size}"><img class="real" src="${esc(e.image)}" alt="${esc(e.title)}" loading="lazy"></div>`;
+    const img = "";
+    return `<div class="poster ${size}" style="--a:${e.a || "#ff2e93"};--b:${e.b || "#b44dff"}">
       ${img}<span class="ring"></span><span class="ring r2"></span>
       <span class="p-cat">${esc(e.category)}</span><span class="p-brand">RR</span>
       <div class="p-date">${esc(fmtShort(e.date))} · ${esc(e.city)}</div>
@@ -188,7 +190,8 @@
     return {
       id: user.uid, name: d.name || user.displayName || "", email: user.email || d.email || "",
       phone: d.phone || "", city: d.city || "", gender: d.gender || "", dob: d.dob || "", joined: d.joined || today(),
-      providers: (user.providerData || []).map((x) => x.providerId)
+      providers: (user.providerData || []).map((x) => x.providerId),
+      isAdmin: await db.doc("admins/" + user.uid).get().then((a) => a.exists).catch(() => false)
     };
   }
 
@@ -345,6 +348,49 @@
   }
 
   /* =========================================================
+     LIVE CATALOGUE — events, merch and site content from Firestore
+     Pages run their code through RR.ready(fn), which waits for this.
+     Until the admin imports data (content/site exists), the bundled js/data.js is used.
+     ========================================================= */
+  const CATALOG_KEY = "rr_catalog";
+  const plain = (o) => { const x = { ...o }; delete x.createdAt; delete x.updatedAt; return x; };
+  async function fetchCatalog() {
+    const [ev, pr, site, faq] = await Promise.all([
+      db.collection("events").where("published", "==", true).get(),
+      db.collection("products").where("published", "==", true).get(),
+      db.doc("content/site").get(),
+      db.doc("content/faq").get()
+    ]);
+    if (!site.exists) return null;   // nothing imported yet → keep bundled data
+    return {
+      events: ev.docs.map((d) => ({ ...plain(d.data()), id: d.id })),
+      products: pr.docs.map((d) => ({ ...plain(d.data()), id: d.id })).sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || String(a.name).localeCompare(b.name)),
+      site: plain(site.data()),
+      faq: faq.exists ? (faq.data().groups || []) : null
+    };
+  }
+  function applyCatalog(c) {
+    if (!c) return;
+    D.events = c.events || [];
+    D.products = c.products || [];
+    if (c.site) {
+      if (c.site.contact) D.contact = { ...D.contact, ...c.site.contact, socials: { ...D.contact.socials, ...(c.site.contact.socials || {}) } };
+      if (Array.isArray(c.site.delivery) && c.site.delivery.length) D.delivery = c.site.delivery;
+      if (c.site.heroBadge) D.heroBadge = c.site.heroBadge;
+    }
+    if (c.faq) D.faq = c.faq;
+  }
+  const timeout = (ms) => new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms));
+  const catalogReady = (async () => {
+    if (!db || document.body.dataset.page === "admin") return;
+    let fresh = null;
+    try { fresh = await Promise.race([fetchCatalog(), timeout(6000)]); }
+    catch (e) { console.warn("Using saved catalogue:", e.message); applyCatalog(store.get(CATALOG_KEY, null)); return; }
+    if (fresh) { store.set(CATALOG_KEY, fresh); applyCatalog(fresh); } else store.del(CATALOG_KEY);
+  })().catch((e) => console.error(e)).then(() => { renderFooter(); updateBadge(); });
+  function ready(fn) { catalogReady.then(() => { try { fn(); } catch (e) { console.error(e); } }); }
+
+  /* =========================================================
      CART
      ========================================================= */
   const cart = () => store.get("rr_cart", []);
@@ -466,6 +512,7 @@
       dd.innerHTML = `<div class="dd-head"><b>${esc(u.name)}</b><small>${esc(u.email)}</small></div>
         <a class="dd-item" href="profile.html">${icon("user")} My Profile</a>
         <a class="dd-item" href="tickets.html">${icon("ticket")} My Tickets</a>
+        ${u.isAdmin ? `<a class="dd-item" href="admin.html">${icon("chart")} Admin panel</a>` : ""}
         <div class="dd-sep"></div>
         <button class="dd-item danger" data-logout>${icon("logout")} Log out</button>`;
     } else {
@@ -522,7 +569,7 @@
   }
   function renderFooter() {
     const host = $("#site-footer"); if (!host) return;
-    host.outerHTML = `<footer class="site-footer">
+    host.outerHTML = `<footer class="site-footer" id="site-footer">
       <span class="glow pink"></span><span class="glow purple"></span>
       <div class="container">
         <section class="news">
@@ -772,7 +819,7 @@
     currentUser, updateUser, changePassword, logout, openAuth, normPhone, validPhone, validEmail, prettyPhone, saveMessage, subscribe,
     cart, addToCart, setQty, removeItem, clearCart, cartCount, cartSubtotal, cartThumb,
     createOrder, getOrder, orderTickets, userTickets, userOrders, renderQR,
-    openModal, closeModal, phoneField, fieldErr, toast, socialsHTML, initReveal
+    openModal, closeModal, phoneField, fieldErr, toast, socialsHTML, initReveal, ready, SAMPLE, db: () => db, auth: () => auth, fetchCatalog
   };
 
   renderHeader();

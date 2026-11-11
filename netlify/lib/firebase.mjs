@@ -19,7 +19,7 @@ export function cors(origin) {
   return {
     "Access-Control-Allow-Origin": ALLOWED.includes(origin) ? origin : SITE_URL,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Vary": "Origin"
   };
 }

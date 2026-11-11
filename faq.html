@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111b">
+  <link rel="stylesheet" href="css/styles.css?v=20261111c">
 </head>
 <body data-page="faq">
   <div id="site-header"></div>
@@ -29,45 +29,20 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js?v=20261111b"></script>
-  <script src="js/data.js?v=20261111b"></script>
-  <script src="js/app.js?v=20261111b"></script>
+  <script src="js/firebase-config.js?v=20261111c"></script>
+  <script src="js/data.js?v=20261111c"></script>
+  <script src="js/app.js?v=20261111c"></script>
   <script>
-    (function () {
-      // Sample answers. Review and replace with Rada Republic's actual policies.
-      const FAQ = [
-        { id: "tickets", title: "Tickets", items: [
-          ["Do I need an account to buy tickets?", "No. You can check out as a guest with just your name, email and M-Pesa number. Your QR ticket is emailed to you. Create an account with the same email later and your tickets will appear in My Tickets."],
-          ["Where do I find my ticket?", "Right after payment your QR ticket is shown on screen and sent to the email you entered. If you have an account, it's also under My Tickets."],
-          ["How do I get into the event?", "Show the QR code at the gate, either on your phone or printed. Each ticket is scanned once, so don't share your QR code."],
-          ["I didn't receive my ticket email.", "Check your spam or promotions folder first. If it's not there, contact us with your M-Pesa confirmation code and we'll resend it."]
-        ]},
-        { id: "payments", title: "Payments", items: [
-          ["How do I pay?", "We use M-Pesa. Enter your M-Pesa number at checkout and you'll get a prompt on your phone. Enter your PIN to confirm, and that's it."],
-          ["I didn't get the M-Pesa prompt.", "Make sure your phone is on, unlocked and has network, and that the number is correct. Then try again. If money left your account but no ticket arrived, contact us with the M-Pesa code."],
-          ["Is my payment secure?", "Yes. Payment happens on your phone through M-Pesa and we never see your PIN."]
-        ]},
-        { id: "merch", title: "Merch & delivery", items: [
-          ["Where do you deliver?", "Anywhere in Kenya. Delivery fees are shown at checkout based on your area."],
-          ["How long does delivery take?", "Usually 1–3 days. We'll call the number you gave us to arrange the drop-off."],
-          ["What if my size doesn't fit?", "Contact us within a few days of delivery and we'll help you exchange it, subject to stock."]
-        ]},
-        { id: "refunds", title: "Refunds", items: [
-          ["Can I get a refund on a ticket?", "Tickets are generally non-refundable. If an event is cancelled, you'll be refunded to the M-Pesa number you paid with. If it's postponed, your ticket stays valid for the new date."],
-          ["How do I request a refund?", "Contact us with your order number (it starts with RR-) and your M-Pesa confirmation code."]
-        ]},
-        { id: "partners", title: "Partners", items: [
-          ["How do I become a partner?", "Whether you're a brand, sponsor or event organiser, reach out through the contact page and choose \"Partnership\". Our team will get back to you."]
-        ]}
-      ];
+    RR.ready(function () {
+      const FAQ = RR_DATA.faq || [];
       const { $, $$, esc, icon } = RR;
       $("#faq-nav").innerHTML = FAQ.map((g) => `<a href="#${g.id}">${esc(g.title)}</a>`).join("");
       $("#faq").innerHTML = FAQ.map((g) => `<section class="faq-group" id="${g.id}">
           <h2 class="h3">${esc(g.title)}</h2>
-          ${g.items.map(([q, a]) => `<details class="faq-item"><summary>${esc(q)}${icon("chevron")}</summary><p>${esc(a)}</p></details>`).join("")}
+          ${(g.items || []).map(({ q, a }) => `<details class="faq-item"><summary>${esc(q)}${icon("chevron")}</summary><p>${esc(a)}</p></details>`).join("")}
         </section>`).join("");
       if (location.hash) { const g = $(location.hash); if (g) { const d = $("details", g); if (d) d.open = true; setTimeout(() => g.scrollIntoView(), 0); } }
-    })();
+    });
   </script>
 </body>
 </html>

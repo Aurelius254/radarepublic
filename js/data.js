@@ -103,6 +103,36 @@ window.RR_DATA = {
     { id: "rest", name: "Rest of Kenya", fee: 500 }
   ],
 
+  /* Homepage badge text (editable in the admin panel) */
+  heroBadge: "Now selling · Eldoret & beyond",
+
+  /* FAQ page (sample answers: review against your real policies) */
+  faq: [
+    { id: "tickets", title: "Tickets", items: [
+      { q: "Do I need an account to buy tickets?", a: "No. You can check out as a guest with just your name, email and M-Pesa number. Your QR ticket is emailed to you. Create an account with the same email later and your tickets will appear in My Tickets." },
+      { q: "Where do I find my ticket?", a: "Right after payment your QR ticket is shown on screen and sent to the email you entered. If you have an account, it's also under My Tickets." },
+      { q: "How do I get into the event?", a: "Show the QR code at the gate, either on your phone or printed. Each ticket is scanned once, so don't share your QR code." },
+      { q: "I didn't receive my ticket email.", a: "Check your spam or promotions folder first. If it's not there, contact us with your M-Pesa confirmation code and we'll resend it." }
+    ] },
+    { id: "payments", title: "Payments", items: [
+      { q: "How do I pay?", a: "We use M-Pesa. Enter your M-Pesa number at checkout and you'll get a prompt on your phone. Enter your PIN to confirm, and that's it." },
+      { q: "I didn't get the M-Pesa prompt.", a: "Make sure your phone is on, unlocked and has network, and that the number is correct. Then try again. If money left your account but no ticket arrived, contact us with the M-Pesa code." },
+      { q: "Is my payment secure?", a: "Yes. Payment happens on your phone through M-Pesa and we never see your PIN." }
+    ] },
+    { id: "merch", title: "Merch & delivery", items: [
+      { q: "Where do you deliver?", a: "Anywhere in Kenya. Delivery fees are shown at checkout based on your area." },
+      { q: "How long does delivery take?", a: "Usually 1â€“3 days. We'll call the number you gave us to arrange the drop-off." },
+      { q: "What if my size doesn't fit?", a: "Contact us within a few days of delivery and we'll help you exchange it, subject to stock." }
+    ] },
+    { id: "refunds", title: "Refunds", items: [
+      { q: "Can I get a refund on a ticket?", a: "Tickets are generally non-refundable. If an event is cancelled, you'll be refunded to the M-Pesa number you paid with. If it's postponed, your ticket stays valid for the new date." },
+      { q: "How do I request a refund?", a: "Contact us with your order number (it starts with RR-) and your M-Pesa confirmation code." }
+    ] },
+    { id: "partners", title: "Partners", items: [
+      { q: "How do I become a partner?", a: "Whether you're a brand, sponsor or event organiser, reach out through the contact page and choose \"Partnership\". Our team will get back to you." }
+    ] }
+  ],
+
   /* Business details used in the footer & contact page (placeholders, confirm these) */
   contact: {
     email: "hello@radarepublic.co.ke",
