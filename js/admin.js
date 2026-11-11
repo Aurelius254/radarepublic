@@ -37,7 +37,7 @@
       <input class="input" id="${id}" type="${o.type || "text"}" value="${esc(val ?? "")}" placeholder="${esc(o.ph || "")}" ${o.attrs || ""}>${o.hint ? `<span class="hint">${o.hint}</span>` : ""}<span class="err-msg">${o.err || "Required"}</span></div>`;
   const area = (id, label, val = "", o = {}) => `<div class="field ${o.span === false ? "" : "span-2"}" data-f="${id}"><label class="label" for="${id}">${label}${o.req ? '<span class="req">*</span>' : ""}</label>
       <textarea class="input" id="${id}" rows="${o.rows || 4}" placeholder="${esc(o.ph || "")}" style="height:auto">${esc(val ?? "")}</textarea>${o.hint ? `<span class="hint">${o.hint}</span>` : ""}<span class="err-msg">Required</span></div>`;
-  const chk = (id, label, on, hint = "") => `<label class="check ad-check"><input type="checkbox" id="${id}" ${on ? "checked" : ""}><span><b>${label}</b>${hint ? `<small>${hint}</small>` : ""}</span></label>`;
+  const chk = (id, label, on, hint = "") => `<label class="check cp-check"><input type="checkbox" id="${id}" ${on ? "checked" : ""}><span><b>${label}</b>${hint ? `<small>${hint}</small>` : ""}</span></label>`;
   const val = (root, id) => ($("#" + id, root) || {}).value ?? "";
   const need = (root, ids) => { let ok = true; ids.forEach((id) => { const bad = !String(val(root, id)).trim(); RR.fieldErr(root, id, bad); if (bad) ok = false; }); return ok; };
   const busy = (btn, on, label = "Saving…") => { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.html = btn.innerHTML; btn.innerHTML = `<span class="spinner"></span> ${label}`; } else if (btn.dataset.html) btn.innerHTML = btn.dataset.html; };
@@ -46,8 +46,8 @@
   /* ---------- access gate ---------- */
   function locked(title, msg, signIn) {
     root.innerHTML = `<div class="empty"><div class="em-ic">${icon("lock")}</div><h2>${title}</h2><p>${msg}</p>
-      ${signIn ? `<div class="actions"><button class="btn btn-primary" id="ad-login">Log in</button></div>` : `<div class="actions"><a class="btn btn-ghost" href="index.html">Back to the site</a></div>`}</div>`;
-    const b = $("#ad-login"); if (b) b.addEventListener("click", () => RR.openAuth("login"));
+      ${signIn ? `<div class="actions"><button class="btn btn-primary" id="cp-login">Log in</button></div>` : `<div class="actions"><a class="btn btn-ghost" href="index.html">Back to the site</a></div>`}</div>`;
+    const b = $("#cp-login"); if (b) b.addEventListener("click", () => RR.openAuth("login"));
   }
   function status(msg) { root.innerHTML = `<div class="empty"><div class="em-ic"><span class="spinner" style="width:30px;height:30px"></span></div><h2>${msg}</h2></div>`; }
   function crashed(e) {
@@ -101,29 +101,29 @@
   /* ---------- layout ---------- */
   function shell() {
     root.innerHTML = `<div class="admin">
-      <aside class="ad-side"><div class="ad-brand"><span class="eyebrow">Admin</span><b>Rada Republic</b></div><nav class="ad-nav" id="ad-nav"></nav>
-        <a class="ad-viewsite" href="index.html" target="_blank" rel="noopener">${icon("arrow")} View site</a></aside>
-      <section class="ad-main" id="ad-main"><div class="empty"><span class="spinner"></span></div></section></div>`;
+      <aside class="cp-side"><div class="cp-brand"><span class="eyebrow">Admin</span><b>Rada Republic</b></div><nav class="cp-nav" id="cp-nav"></nav>
+        <a class="cp-viewsite" href="index.html" target="_blank" rel="noopener">${icon("arrow")} View site</a></aside>
+      <section class="cp-main" id="cp-main"><div class="empty"><span class="spinner"></span></div></section></div>`;
     renderNav();
     window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (TABS.some((t) => t[0] === h) && h !== tab) { tab = h; renderNav(); view(); } });
   }
   function renderNav() {
-    const nav = $("#ad-nav"); if (!nav) return;
+    const nav = $("#cp-nav"); if (!nav) return;
     const newMsgs = S.messages.filter((m) => m.status === "new").length;
     const counts = { events: S.events.length, merch: S.products.length, inbox: newMsgs, subscribers: S.subscribers.length };
     nav.innerHTML = TABS.map(([id, label, ic]) => `<a href="#${id}" class="${id === tab ? "active" : ""}">${icon(ic)}<span>${label}</span>${S.loaded && counts[id] ? `<em class="${id === "inbox" ? "hot" : ""}">${counts[id]}</em>` : ""}</a>`).join("");
   }
   function view() {
-    const m = $("#ad-main"); if (!m) return;
+    const m = $("#cp-main"); if (!m) return;
     if (!S.loaded) { m.innerHTML = S.error ? `<div class="empty"><h2>Couldn't load the admin data</h2><p class="muted">${esc(S.error)}</p><div class="actions"><button class="btn btn-primary" onclick="location.reload()">Try again</button></div></div>` : `<div class="empty"><span class="spinner"></span></div>`; return; }
     try { ({ dashboard: vDashboard, events: vEvents, merch: vMerch, content: vContent, faq: vFaq, inbox: vInbox, subscribers: vSubscribers }[tab] || vDashboard)(m); }
     catch (e) { console.error(e); m.innerHTML = `<div class="empty"><h2>This section hit a problem</h2><pre style="white-space:pre-wrap;text-align:left;font-size:12.5px;color:#ff8b96">${esc(e.message)}</pre></div>`; }
     m.scrollTop = 0;
   }
-  const head = (title, sub, actions = "") => `<div class="ad-head"><div><h1 class="h2">${title}</h1>${sub ? `<p class="muted">${sub}</p>` : ""}</div><div class="ad-head-actions">${actions}</div></div>`;
-  const importBanner = () => S.site ? "" : `<div class="ad-banner">${icon("info")}<div><b>The site is still showing the built-in sample data.</b>
+  const head = (title, sub, actions = "") => `<div class="cp-head"><div><h1 class="h2">${title}</h1>${sub ? `<p class="muted">${sub}</p>` : ""}</div><div class="cp-head-actions">${actions}</div></div>`;
+  const importBanner = () => S.site ? "" : `<div class="cp-banner">${icon("info")}<div><b>The site is still showing the built-in sample data.</b>
       <p>Import it into the database to start editing, or start fresh with no sample events or merch. The public site switches to the database as soon as you do.</p>
-      <div class="ad-banner-actions"><button class="btn btn-primary btn-sm" data-import="sample">Import sample data</button><button class="btn btn-ghost btn-sm" data-import="fresh">Start fresh</button></div></div></div>`;
+      <div class="cp-banner-actions"><button class="btn btn-primary btn-sm" data-import="sample">Import sample data</button><button class="btn btn-ghost btn-sm" data-import="fresh">Start fresh</button></div></div></div>`;
   function wireImport(m) {
     $$("[data-import]", m).forEach((b) => b.addEventListener("click", async () => {
       const fresh = b.dataset.import === "fresh";
@@ -182,7 +182,7 @@
   const imgVal = (root) => { const u = $("[data-imgbox] [data-url]", root); return u ? u.value.trim() : ""; };
 
   function editor(title, html) {
-    const o = RR.openModal(`<div class="ad-editor"><h2>${title}</h2>${html}</div>`);
+    const o = RR.openModal(`<div class="cp-editor"><h2>${title}</h2>${html}</div>`);
     $(".modal", o).classList.add("modal-wide");
     $$("[data-imgbox]", o).forEach(wireImgBox);
     return o;
@@ -197,18 +197,18 @@
     const newMsgs = S.messages.filter((x) => x.status === "new");
     const featured = S.events.find((e) => e.featured);
     m.innerHTML = head("Dashboard", `Signed in as ${esc(((RR.currentUser() || {}).name) || (auth.currentUser && (auth.currentUser.displayName || auth.currentUser.email || auth.currentUser.phoneNumber)) || "admin")}`) + importBanner() + `
-      <div class="ad-stats">
+      <div class="cp-stats">
         <a class="stat" href="#events"><b class="grad-text">${upcoming.length}</b><span>Upcoming events live</span></a>
         <a class="stat" href="#merch"><b class="grad-text">${S.products.filter((p) => p.published !== false).length}</b><span>Merch items live</span></a>
         <a class="stat" href="#inbox"><b class="grad-text">${newMsgs.length}</b><span>New messages</span></a>
         <a class="stat" href="#subscribers"><b class="grad-text">${S.subscribers.length}</b><span>Newsletter subscribers</span></a>
       </div>
-      <div class="ad-grid2">
+      <div class="cp-grid2">
         <div class="panel"><div class="panel-title"><h3>Next up</h3></div>
-          ${upcoming.slice(0, 5).map((e) => `<div class="ad-mini"><span class="ad-thumb">${RR.poster(e)}</span><div><b>${esc(e.title)}</b><small>${esc(fmtDate(e.date))} · ${esc(e.venue)}</small></div>${e.featured ? `<span class="tag pink">Featured</span>` : ""}</div>`).join("") || `<p class="muted">No upcoming events. <a class="link" href="#events">Add one</a>.</p>`}
+          ${upcoming.slice(0, 5).map((e) => `<div class="cp-mini"><span class="cp-thumb">${RR.poster(e)}</span><div><b>${esc(e.title)}</b><small>${esc(fmtDate(e.date))} · ${esc(e.venue)}</small></div>${e.featured ? `<span class="tag pink">Featured</span>` : ""}</div>`).join("") || `<p class="muted">No upcoming events. <a class="link" href="#events">Add one</a>.</p>`}
         </div>
         <div class="panel"><div class="panel-title"><h3>Latest messages</h3></div>
-          ${S.messages.slice(0, 5).map((x) => `<a class="ad-mini" href="#inbox"><span class="ad-dot ${x.status === "new" ? "on" : ""}"></span><div><b>${esc(x.name)}</b><small>${esc(topicName(x.topic))} · ${esc(when(x.createdAt))}</small></div></a>`).join("") || `<p class="muted">No messages yet.</p>`}
+          ${S.messages.slice(0, 5).map((x) => `<a class="cp-mini" href="#inbox"><span class="cp-dot ${x.status === "new" ? "on" : ""}"></span><div><b>${esc(x.name)}</b><small>${esc(topicName(x.topic))} · ${esc(when(x.createdAt))}</small></div></a>`).join("") || `<p class="muted">No messages yet.</p>`}
         </div>
       </div>
       <div class="panel" style="margin-top:18px"><div class="panel-title"><h3>Coming next</h3></div>
@@ -224,13 +224,13 @@
     const list = S.events.filter((e) => evFilter === "all" ? true : evFilter === "hidden" ? e.published === false : evFilter === "past" ? isPast(e) : !isPast(e));
     m.innerHTML = head("Events", "Add, edit, hide or feature events. Changes show on the site straight away.", `<button class="btn btn-primary" id="ev-new" ${S.site ? "" : "disabled"}>${icon("ticket")} New event</button>`) + importBanner() + `
       <div class="tabs" id="ev-filter">${[["upcoming", "Upcoming"], ["past", "Past"], ["hidden", "Hidden"], ["all", "All"]].map(([k, l]) => `<button data-f="${k}" class="${evFilter === k ? "active" : ""}">${l}</button>`).join("")}</div>
-      <div class="ad-list">${list.map((e) => `
-        <div class="ad-row ${e.published === false ? "is-hidden" : ""}">
-          <span class="ad-thumb">${RR.poster(e)}</span>
-          <div class="ad-row-main"><b>${esc(e.title)}</b>
+      <div class="cp-list">${list.map((e) => `
+        <div class="cp-row ${e.published === false ? "is-hidden" : ""}">
+          <span class="cp-thumb">${RR.poster(e)}</span>
+          <div class="cp-row-main"><b>${esc(e.title)}</b>
             <small>${esc(fmtDate(e.date))} · ${esc(fmtTime(e.date))} · ${esc(e.venue)}, ${esc(e.city)}</small>
-            <div class="ad-chips">${e.published === false ? `<span class="tag">Hidden</span>` : `<span class="tag ok">Live</span>`}${e.featured ? `<span class="tag pink">★ Featured</span>` : ""}${isPast(e) ? `<span class="tag">Past</span>` : ""}<span class="tag">From ${fmt(minPrice(e))}</span><span class="tag">${(e.tiers || []).length} tier${(e.tiers || []).length === 1 ? "" : "s"}</span></div></div>
-          <div class="ad-row-actions">
+            <div class="cp-chips">${e.published === false ? `<span class="tag">Hidden</span>` : `<span class="tag ok">Live</span>`}${e.featured ? `<span class="tag pink">★ Featured</span>` : ""}${isPast(e) ? `<span class="tag">Past</span>` : ""}<span class="tag">From ${fmt(minPrice(e))}</span><span class="tag">${(e.tiers || []).length} tier${(e.tiers || []).length === 1 ? "" : "s"}</span></div></div>
+          <div class="cp-row-actions">
             <button class="btn btn-ghost btn-sm" data-edit="${e.id}">${icon("edit")} Edit</button>
             <button class="btn btn-ghost btn-sm" data-feature="${e.id}" ${e.featured ? "disabled" : ""}>★ Feature</button>
             <button class="btn btn-ghost btn-sm" data-toggle="${e.id}">${e.published === false ? "Show" : "Hide"}</button>
@@ -284,9 +284,9 @@
       <div class="field span-2"><span class="label">Ticket tiers<span class="req">*</span></span><div id="tiers">${(e.tiers || []).map(tierRow).join("")}</div>
         <button type="button" class="btn btn-ghost btn-sm" id="add-tier" style="margin-top:8px;justify-self:start">+ Add tier</button><span class="err-msg" id="tier-err">Add at least one tier with a name and price.</span></div>
       ${imgBox("Poster image", e.image)}
-      <div class="field"><span class="label">Placeholder colours</span><div class="ad-colors"><input type="color" id="e-a" value="${esc(e.a || "#ff2e93")}"><input type="color" id="e-b" value="${esc(e.b || "#b44dff")}"><span class="hint">Used only when there's no poster image.</span></div></div>
+      <div class="field"><span class="label">Placeholder colours</span><div class="cp-colors"><input type="color" id="e-a" value="${esc(e.a || "#ff2e93")}"><input type="color" id="e-b" value="${esc(e.b || "#b44dff")}"><span class="hint">Used only when there's no poster image.</span></div></div>
       <div class="field">${chk("e-pub", "Live on the site", e.published !== false, "Untick to hide it without deleting.")}${chk("e-feat", "Featured event", e.featured, "Shown in the big banner on the homepage and Events page.")}</div>
-      <div class="span-2 ad-form-foot"><button type="button" class="btn btn-ghost" data-cancel>Cancel</button><button class="btn btn-primary" type="submit" id="ev-save">${isNew ? "Create event" : "Save changes"}</button></div>
+      <div class="span-2 cp-form-foot"><button type="button" class="btn btn-ghost" data-cancel>Cancel</button><button class="btn btn-primary" type="submit" id="ev-save">${isNew ? "Create event" : "Save changes"}</button></div>
     </form>`);
     const f = $("#ev-form", o), tiers = $("#tiers", o);
     $("#add-tier", o).addEventListener("click", () => tiers.insertAdjacentHTML("beforeend", tierRow()));
@@ -330,12 +330,12 @@
      ========================================================= */
   function vMerch(m) {
     m.innerHTML = head("Merch", "Products, prices, sizes, stock and photos. Featured items show first on the homepage.", `<button class="btn btn-primary" id="pr-new" ${S.site ? "" : "disabled"}>${icon("bag")} New product</button>`) + importBanner() + `
-      <div class="ad-list">${S.products.map((p) => `
-        <div class="ad-row ${p.published === false ? "is-hidden" : ""}">
-          <span class="ad-thumb sq">${RR.productArt(p)}</span>
-          <div class="ad-row-main"><b>${esc(p.name)}</b><small>${esc(p.category)} · ${fmt(p.price)} · ${esc((p.sizes || []).join(", "))}</small>
-            <div class="ad-chips">${p.published === false ? `<span class="tag">Hidden</span>` : `<span class="tag ok">Live</span>`}${p.featured ? `<span class="tag pink">★ Featured</span>` : ""}${p.badge ? `<span class="tag">${esc(p.badge)}</span>` : ""}${p.stock != null && p.stock !== "" ? `<span class="tag ${+p.stock === 0 ? "warn" : ""}">${+p.stock === 0 ? "Out of stock" : p.stock + " in stock"}</span>` : ""}</div></div>
-          <div class="ad-row-actions">
+      <div class="cp-list">${S.products.map((p) => `
+        <div class="cp-row ${p.published === false ? "is-hidden" : ""}">
+          <span class="cp-thumb sq">${RR.productArt(p)}</span>
+          <div class="cp-row-main"><b>${esc(p.name)}</b><small>${esc(p.category)} · ${fmt(p.price)} · ${esc((p.sizes || []).join(", "))}</small>
+            <div class="cp-chips">${p.published === false ? `<span class="tag">Hidden</span>` : `<span class="tag ok">Live</span>`}${p.featured ? `<span class="tag pink">★ Featured</span>` : ""}${p.badge ? `<span class="tag">${esc(p.badge)}</span>` : ""}${p.stock != null && p.stock !== "" ? `<span class="tag ${+p.stock === 0 ? "warn" : ""}">${+p.stock === 0 ? "Out of stock" : p.stock + " in stock"}</span>` : ""}</div></div>
+          <div class="cp-row-actions">
             <button class="btn btn-ghost btn-sm" data-edit="${p.id}">${icon("edit")} Edit</button>
             <button class="btn btn-ghost btn-sm" data-feat="${p.id}">${p.featured ? "Unfeature" : "★ Feature"}</button>
             <button class="btn btn-ghost btn-sm" data-toggle="${p.id}">${p.published === false ? "Show" : "Hide"}</button>
@@ -371,11 +371,11 @@
       ${fld("p-order", "Display order", p.order ?? S.products.length, { type: "number", hint: "Lower numbers show first." })}
       ${area("p-desc", "Description", p.desc, { ph: "Fabric, fit, print…" })}
       ${imgBox("Product photo", p.image)}
-      <div class="field"><span class="label">Placeholder (when there's no photo)</span><div class="ad-colors">
+      <div class="field"><span class="label">Placeholder (when there's no photo)</span><div class="cp-colors">
         <select class="input" id="p-shape" style="max-width:170px">${SHAPES.map(([k, l]) => `<option value="${k}" ${p.shape === k ? "selected" : ""}>${l}</option>`).join("")}</select>
         <input type="color" id="p-a" value="${esc(p.a || "#ff2e93")}"><input type="color" id="p-b" value="${esc(p.b || "#7b2cff")}"></div></div>
       <div class="field">${chk("p-pub", "Live on the site", p.published !== false)}${chk("p-feat", "Featured", p.featured, "Featured items show first in the homepage Merch row.")}</div>
-      <div class="span-2 ad-form-foot"><button type="button" class="btn btn-ghost" data-cancel>Cancel</button><button class="btn btn-primary" type="submit" id="pr-save">${isNew ? "Create product" : "Save changes"}</button></div>
+      <div class="span-2 cp-form-foot"><button type="button" class="btn btn-ghost" data-cancel>Cancel</button><button class="btn btn-primary" type="submit" id="pr-save">${isNew ? "Create product" : "Save changes"}</button></div>
     </form>`);
     const f = $("#pr-form", o);
     $("[data-cancel]", o).addEventListener("click", () => RR.closeModal());
@@ -421,7 +421,7 @@
         <div class="panel"><div class="panel-title"><h3>Merch delivery zones</h3><p>The first zone is selected by default at checkout.</p></div>
           <div id="zones">${(site.delivery || []).map(zoneRow).join("")}</div>
           <button type="button" class="btn btn-ghost btn-sm" id="add-zone" style="margin-top:10px">+ Add zone</button></div>
-        <div class="ad-form-foot sticky"><button class="btn btn-primary" type="submit" id="ct-save" ${S.site ? "" : "disabled"}>Save site content</button></div>
+        <div class="cp-form-foot sticky"><button class="btn btn-primary" type="submit" id="ct-save" ${S.site ? "" : "disabled"}>Save site content</button></div>
       </form>`;
     wireImport(m);
     const zones = $("#zones", m);
@@ -455,7 +455,7 @@
     m.innerHTML = head("FAQs", "Questions and answers on the FAQ page, grouped into sections.") + importBanner() + `
       <div id="faq-groups">${groups.map(faqGroup).join("")}</div>
       <button type="button" class="btn btn-ghost" id="add-group">+ Add section</button>
-      <div class="ad-form-foot sticky"><button class="btn btn-primary" id="faq-save" ${S.site ? "" : "disabled"}>Save FAQs</button></div>`;
+      <div class="cp-form-foot sticky"><button class="btn btn-primary" id="faq-save" ${S.site ? "" : "disabled"}>Save FAQs</button></div>`;
     wireImport(m);
     const wrap = $("#faq-groups", m);
     $("#add-group", m).addEventListener("click", () => wrap.insertAdjacentHTML("beforeend", faqGroup({ items: [{}] })));
@@ -487,13 +487,13 @@
     const list = S.messages.filter((x) => inFilter === "all" || (inFilter === "new" ? x.status === "new" : x.status === "done"));
     m.innerHTML = head("Inbox", "Messages from the Contact page.") + `
       <div class="tabs" id="in-filter">${[["new", "New"], ["done", "Done"], ["all", "All"]].map(([k, l]) => `<button data-f="${k}" class="${inFilter === k ? "active" : ""}">${l}</button>`).join("")}</div>
-      <div class="ad-list">${list.map((x) => `
-        <div class="ad-msg ${x.status === "new" ? "is-new" : ""}">
-          <div class="ad-msg-top"><span class="tag ${x.topic === "partner" || x.topic === "host" ? "pink" : ""}">${esc(topicName(x.topic))}</span><small class="muted">${esc(when(x.createdAt))}</small></div>
+      <div class="cp-list">${list.map((x) => `
+        <div class="cp-msg ${x.status === "new" ? "is-new" : ""}">
+          <div class="cp-msg-top"><span class="tag ${x.topic === "partner" || x.topic === "host" ? "pink" : ""}">${esc(topicName(x.topic))}</span><small class="muted">${esc(when(x.createdAt))}</small></div>
           <b>${esc(x.name)}</b>
-          <div class="ad-msg-meta"><a class="link" href="mailto:${esc(x.email)}">${esc(x.email)}</a>${x.phone ? ` · <a class="link" href="tel:${esc(x.phone)}">${esc(x.phone)}</a>` : ""}${x.uid ? ` · <span class="muted">has an account</span>` : ""}</div>
+          <div class="cp-msg-meta"><a class="link" href="mailto:${esc(x.email)}">${esc(x.email)}</a>${x.phone ? ` · <a class="link" href="tel:${esc(x.phone)}">${esc(x.phone)}</a>` : ""}${x.uid ? ` · <span class="muted">has an account</span>` : ""}</div>
           <p>${esc(x.message)}</p>
-          <div class="ad-row-actions">
+          <div class="cp-row-actions">
             <a class="btn btn-ghost btn-sm" href="mailto:${esc(x.email)}?subject=${encodeURIComponent("Re: your message to Rada Republic")}">${icon("mail")} Reply</a>
             <button class="btn btn-ghost btn-sm" data-status="${x.id}">${x.status === "new" ? `${icon("check")} Mark done` : "Mark as new"}</button>
             <button class="btn btn-ghost btn-sm danger" data-del="${x.id}" aria-label="Delete">${icon("trash")}</button>
@@ -518,7 +518,7 @@
     const list = S.subscribers.filter((s) => !subQ || s.email.includes(subQ.toLowerCase()));
     m.innerHTML = head("Subscribers", `${S.subscribers.length} people on the newsletter list. Sending newsletters from here comes once the email service is connected.`, `<button class="btn btn-ghost" id="sub-csv" ${S.subscribers.length ? "" : "disabled"}>${icon("download")} Export CSV</button>`) + `
       <input class="input" id="sub-q" placeholder="Search emails…" value="${esc(subQ)}" style="max-width:360px;margin-bottom:16px">
-      <div class="panel" style="padding:8px 0"><table class="ad-table"><thead><tr><th>Email</th><th>Joined</th><th>From</th><th></th></tr></thead><tbody>
+      <div class="panel" style="padding:8px 0"><table class="cp-table"><thead><tr><th>Email</th><th>Joined</th><th>From</th><th></th></tr></thead><tbody>
         ${list.map((s) => `<tr><td>${esc(s.email)}</td><td>${esc(when(s.createdAt))}</td><td>${esc(s.source || "")}</td><td><button class="icon-btn" data-del="${esc(s.id)}" aria-label="Remove">${icon("trash")}</button></td></tr>`).join("") || `<tr><td colspan="4" class="muted" style="padding:24px;text-align:center">No subscribers${subQ ? " match that search" : " yet"}.</td></tr>`}
       </tbody></table></div>`;
     const q = $("#sub-q", m);
