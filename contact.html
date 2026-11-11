@@ -19,7 +19,6 @@
         <h1 class="h1" style="font-size:clamp(36px,5vw,56px);margin-top:12px">Reach out<br>to <span class="grad-text">us.</span></h1>
         <p class="lead" style="margin-top:14px;font-size:16px">Questions about a ticket, an order, or want to bring your event to the Republic? We usually reply within a few hours.</p>
         <div class="contact-list" id="details"></div>
-        <div id="socials"></div>
       </div>
 
       <form class="contact-form" id="cform" novalidate>
@@ -70,7 +69,6 @@
         ["pin", "Based in", C.location, ""],
         ["clock", "Hours", C.hours, ""]
       ].map(([ic, l, v, href]) => `<${href ? `a href="${href}" target="${href.startsWith("http") ? "_blank" : "_self"}" rel="noopener"` : "div"} class="contact-item"><span class="ci">${icon(ic)}</span><div><small>${l}</small><b>${esc(v)}</b></div></${href ? "a" : "div"}>`).join("");
-      $("#socials").innerHTML = RR.socialsHTML();
 
       let topic = RR.qs("topic") || "general";
       const setTopic = (t) => { topic = t; $$("#topics button").forEach((b) => b.classList.toggle("active", b.dataset.t === t)); };
