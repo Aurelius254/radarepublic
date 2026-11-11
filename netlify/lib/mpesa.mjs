@@ -25,7 +25,9 @@ export function mpesaConfig() {
     till: (process.env.MPESA_TYPE || "").toLowerCase() === "till",
     callbackSecret: process.env.MPESA_CALLBACK_SECRET || ""
   };
-  c.ready = !!(c.key && c.secret && c.shortcode && c.passkey && c.callbackSecret);
+  c.missing = [["MPESA_CONSUMER_KEY", c.key], ["MPESA_CONSUMER_SECRET", c.secret], ["MPESA_SHORTCODE", c.shortcode], ["MPESA_PASSKEY", c.passkey], ["MPESA_CALLBACK_SECRET", c.callbackSecret]]
+    .filter(([, v]) => !v).map(([k]) => k);   // names only, never values
+  c.ready = !c.missing.length;
   return c;
 }
 

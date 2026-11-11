@@ -22,7 +22,7 @@ export default async (req) => {
   const bad = (msg, status = 400) => json(status, { error: msg }, origin);
 
   const mp = mpesaConfig();
-  if (!mp.ready) return bad("M-Pesa payments are being set up. Please try again a little later.", 503);
+  if (!mp.ready) return json(503, { error: "M-Pesa payments are being set up. Please try again a little later.", missing: mp.missing, env: mp.env }, origin);
 
   let body;
   try { body = await req.json(); } catch { return bad("Something went wrong. Refresh the page and try again."); }
