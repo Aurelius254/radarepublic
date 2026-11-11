@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261110a">
+  <link rel="stylesheet" href="css/styles.css?v=20261111a">
 </head>
 <body data-page="checkout">
   <div id="site-header"></div>
@@ -18,8 +18,8 @@
   </main>
   <div id="site-footer"></div>
 
-  <script src="js/data.js?v=20261110a"></script>
-  <script src="js/app.js?v=20261110a"></script>
+  <script src="js/data.js?v=20261111a"></script>
+  <script src="js/app.js?v=20261111a"></script>
   <script>
     (function () {
       const { $, $$, icon, esc, fmt } = RR;
@@ -63,9 +63,9 @@
           </div>` : ""}
 
           <div class="panel">
-            <div class="panel-title"><span class="num">${step()}</span><div><h3>Pay with M-Pesa</h3><p>Enter your M-Pesa number, then confirm the prompt on your phone with your PIN.</p></div></div>
+            <div class="panel-title"><span class="num">${step()}</span><div><h3>Pay with M-Pesa</h3><p>Enter the M-Pesa number that will pay. It can be different from your profile number. Then confirm the prompt on your phone with your PIN.</p></div></div>
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><span class="mpesa-logo"><i>M</i>M-PESA</span><span class="muted" style="font-size:13px">STK push · Lipa na M-Pesa</span></div>
-            ${RR.phoneField("co-mpesa", 'M-Pesa number<span class="req">*</span>', keep.mpesa)}
+            ${RR.phoneField("co-mpesa", 'M-Pesa number to pay with<span class="req">*</span>', keep.mpesa)}
             <button class="btn btn-mpesa btn-block btn-lg" type="submit" style="margin-top:20px" id="pay">Pay <span id="pay-amt"></span> with M-Pesa</button>
             <p class="secure">${icon("lock")} You'll get a prompt on your phone. We never see your PIN.</p>
           </div>
