@@ -8,16 +8,20 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111a">
+  <link rel="stylesheet" href="css/styles.css?v=20261111b">
 </head>
 <body data-page="profile">
   <div id="site-header"></div>
   <main class="container" id="root"></main>
   <div id="site-footer"></div>
 
-  <script src="js/data.js?v=20261111a"></script>
-  <script src="js/app.js?v=20261111a"></script>
-  <script src="js/account.js?v=20261111a"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js?v=20261111b"></script>
+  <script src="js/data.js?v=20261111b"></script>
+  <script src="js/app.js?v=20261111b"></script>
+  <script src="js/account.js?v=20261111b"></script>
   <script>
     (function () {
       const { $, icon, esc, fmt } = RR;
@@ -28,6 +32,7 @@
         const upcoming = tix.filter((t) => new Date(RR.getEvent(t.eventId).date) >= new Date()).length;
         const spent = orders.reduce((s, o) => s + o.total, 0);
         const since = new Date(u.joined).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+        const hasPassword = (u.providers || []).includes("password");
 
         $("#root").innerHTML = `
           <div class="page-head profile-head">
@@ -47,8 +52,8 @@
                 <div class="panel-title"><span class="num">${icon("user")}</span><div><h3>Personal details</h3><p>Used to prefill checkout and send your tickets.</p></div></div>
                 <div class="form-grid">
                   <div class="field" data-f="p-name"><label class="label" for="p-name">Full name</label><input class="input" id="p-name" value="${esc(u.name)}"><span class="err-msg">Enter your full name</span></div>
-                  <div class="field" data-f="p-email"><label class="label" for="p-email">Email</label><input class="input" id="p-email" type="email" value="${esc(u.email)}"><span class="err-msg">Enter a valid email</span></div>
-                  ${RR.phoneField("p-phone", "Phone", RR.prettyPhone(u.phone))}
+                  <div class="field" data-f="p-email"><label class="label" for="p-email">Email</label><input class="input" id="p-email" type="email" value="${esc(u.email)}" readonly><span class="readonly-note">Your sign-in email. Contact us to change it.</span></div>
+                  ${RR.phoneField("p-phone", u.phone ? "Phone" : "Phone (add one to sign in with it)", RR.prettyPhone(u.phone))}
                   <div class="field"><label class="label" for="p-city">Town / city</label><input class="input" id="p-city" value="${esc(u.city || "")}" placeholder="e.g. Eldoret"></div>
                   <div class="field"><label class="label" for="p-dob">Date of birth</label><input class="input" id="p-dob" type="date" value="${esc(u.dob || "")}" style="color-scheme:dark"></div>
                   <div class="field"><label class="label" for="p-gender">Gender</label><select class="input" id="p-gender">
@@ -57,36 +62,43 @@
                 <button class="btn btn-primary" type="submit" style="margin-top:22px">Save changes</button>
               </form>
 
-              <form class="panel" id="pw" novalidate>
+              ${!hasPassword ? `<div class="panel"><div class="panel-title"><span class="num">${icon("lock")}</span><div><h3>Signing in</h3><p>You sign in with Google, so there's no password to manage here.</p></div></div></div>` : `<form class="panel" id="pw" novalidate>
                 <div class="panel-title"><span class="num">${icon("lock")}</span><div><h3>Change password</h3><p>At least 8 characters.</p></div></div>
                 <div class="form-grid">
                   <div class="field" data-f="pw-old"><label class="label" for="pw-old">Current password</label><input class="input" id="pw-old" type="password" autocomplete="current-password"><span class="err-msg">Current password is incorrect</span></div>
                   <div class="field" data-f="pw-new"><label class="label" for="pw-new">New password</label><input class="input" id="pw-new" type="password" autocomplete="new-password"><span class="err-msg">Use at least 8 characters</span></div>
                 </div>
                 <button class="btn btn-ghost" type="submit" style="margin-top:22px">Update password</button>
-              </form>
+              </form>`}
             </div>
           </div>`;
 
         RR.wireAccountNav();
-        $("#pf").addEventListener("submit", (e) => {
+        $("#pf").addEventListener("submit", async (e) => {
           e.preventDefault();
-          const f = e.target;
-          const errs = { "p-name": $("#p-name").value.trim().length < 2, "p-email": !RR.validEmail($("#p-email").value), "p-phone": !RR.validPhone($("#p-phone").value) };
+          const f = e.target, btn = $("button[type=submit]", f);
+          const ph = $("#p-phone").value.trim();
+          const errs = { "p-name": $("#p-name").value.trim().length < 2, "p-phone": ph !== "" && !RR.validPhone(ph) };
           Object.entries(errs).forEach(([k, b]) => RR.fieldErr(f, k, b));
           if (Object.values(errs).some(Boolean)) return;
-          // BACKEND: PATCH /api/me
-          RR.updateUser({ name: $("#p-name").value.trim(), email: $("#p-email").value.trim(), phone: RR.normPhone($("#p-phone").value), city: $("#p-city").value.trim(), dob: $("#p-dob").value, gender: $("#p-gender").value });
+          btn.disabled = true;
+          const r = await RR.updateUser({ name: $("#p-name").value.trim(), phone: ph, city: $("#p-city").value.trim(), dob: $("#p-dob").value, gender: $("#p-gender").value });
+          btn.disabled = false;
+          if (r.error) return RR.toast(r.error, "err");
           RR.toast("Profile updated.", "ok");
         });
-        $("#pw").addEventListener("submit", (e) => {
+        const pw = $("#pw");
+        if (pw) pw.addEventListener("submit", async (e) => {
           e.preventDefault();
-          const f = e.target, cur = RR.currentUser();
-          const errs = { "pw-old": $("#pw-old").value !== cur.password, "pw-new": $("#pw-new").value.length < 8 };
+          const f = e.target, btn = $("button[type=submit]", f);
+          const errs = { "pw-old": !$("#pw-old").value ? "Enter your current password" : "", "pw-new": $("#pw-new").value.length < 8 };
           Object.entries(errs).forEach(([k, b]) => RR.fieldErr(f, k, b));
           if (Object.values(errs).some(Boolean)) return;
-          RR.updateUser({ password: $("#pw-new").value });
-          RR.toast("Password updated.", "ok");
+          btn.disabled = true;
+          const r = await RR.changePassword($("#pw-old").value, $("#pw-new").value);
+          btn.disabled = false;
+          if (r.error) { RR.fieldErr(f, "pw-old", r.error); return; }
+          f.reset(); RR.toast("Password updated.", "ok");
         });
       }
       document.addEventListener("rr:auth", render);

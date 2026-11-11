@@ -1,0 +1,107 @@
+rules_version = '2';
+
+// Rada Republic: Firestore security rules.
+// Paste this whole file into Firebase console → Firestore Database → Rules → Publish.
+//
+// Principles:
+//  • People can only read and edit their own profile.
+//  • Orders and tickets can only be CREATED by the server (Netlify functions use the Admin SDK,
+//    which bypasses these rules). Browsers can never mark something "paid" or make a ticket.
+//  • Events, merch and site content are public to read; only admins can change them.
+//  • Admins are the accounts listed in the "admins" collection (added by hand in the console).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function str(v, max) { return v is string && v.size() <= max; }
+    function verifiedEmail() { return signedIn() && request.auth.token.email_verified == true; }
+
+    // ---------- Profiles ----------
+    match /users/{uid} {
+      allow read: if isMe(uid) || isAdmin();
+      allow create: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'phone', 'city', 'gender', 'dob', 'joined', 'createdAt'])
+        && str(request.resource.data.name, 100)
+        && request.resource.data.email == request.auth.token.email
+        && str(request.resource.data.phone, 12)
+        && str(request.resource.data.city, 60) && str(request.resource.data.gender, 30) && str(request.resource.data.dob, 10)
+        && str(request.resource.data.joined, 10)
+        && request.resource.data.createdAt == request.time;
+      // Email, join date and createdAt can't be changed from the browser.
+      allow update: if isMe(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'city', 'gender', 'dob'])
+        && str(request.resource.data.name, 100) && str(request.resource.data.phone, 12)
+        && str(request.resource.data.city, 60) && str(request.resource.data.gender, 30) && str(request.resource.data.dob, 10);
+      allow delete: if false;
+    }
+
+    // ---------- Phone number → account link (for phone + password sign-in) ----------
+    // Nobody can read these from the browser (only the server can), so phone numbers can't be harvested.
+    // A number can only be claimed if it's free: creating an existing doc counts as an update, which is denied.
+    match /phones/{phone} {
+      allow read, update: if false;
+      allow create: if signedIn()
+        && phone.matches('^[17][0-9]{8}$')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // ---------- Admins ----------
+    match /admins/{uid} {
+      allow read: if isMe(uid);
+      allow write: if false;   // add admins by hand in the Firebase console
+    }
+
+    // ---------- Orders & tickets (created only by the server) ----------
+    // Buyers can see their own; guest orders are matched by a verified email once they make an account.
+    match /orders/{orderId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid)
+        || (verifiedEmail() && resource.data.email == request.auth.token.email);
+      allow write: if false;
+    }
+    match /tickets/{ticketId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid)
+        || (verifiedEmail() && resource.data.email == request.auth.token.email);
+      allow write: if false;
+    }
+
+    // ---------- Public catalogue & site content (admin-managed) ----------
+    match /events/{id}   { allow read: if true; allow write: if isAdmin(); }
+    match /products/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /content/{id}  { allow read: if true; allow write: if isAdmin(); }   // contacts, FAQs, delivery fees, homepage text…
+
+    // ---------- Contact form ----------
+    match /messages/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['topic', 'name', 'email', 'phone', 'message', 'uid', 'status', 'createdAt'])
+        && str(request.resource.data.topic, 20)
+        && str(request.resource.data.name, 100) && request.resource.data.name.size() >= 2
+        && str(request.resource.data.email, 200) && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        && str(request.resource.data.phone, 20)
+        && str(request.resource.data.message, 3000) && request.resource.data.message.size() >= 10
+        && (request.resource.data.uid == null || isMe(request.resource.data.uid))
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ---------- Newsletter ----------
+    // The document ID is the lowercased email, so each address can only subscribe once.
+    match /subscribers/{email} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'source', 'createdAt'])
+        && request.resource.data.email == email
+        && str(email, 200) && email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        && str(request.resource.data.source, 30)
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Everything else is closed.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

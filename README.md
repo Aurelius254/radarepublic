@@ -40,3 +40,11 @@ New sign-ups work too. Every account gets sample tickets on first login so "My T
 2. **M-Pesa STK push**: `stkPush()` in `checkout.html` is simulated. It should call Safaricom Daraja STK Push from the server, then confirm via the callback.
 3. **Ticket emails**: after payment is confirmed, the server issues the ticket codes and emails the QR codes.
 4. Contact form and newsletter submissions.
+
+## Backend: Firebase (Spark) + Netlify
+- **Firebase project:** `radarepublic-bdf80`. Web config in `js/firebase-config.js` (public by design).
+- **Sign-in:** Google, email + password, phone + password. Phone login goes through the Netlify function `netlify/functions/phone-login.mjs` (URL: `/api/phone-login`).
+- **Database (Firestore, africa-south1):** `users/{uid}` profiles, `phones/{phone}` → account link, `messages` (contact form), `subscribers` (newsletter). Orders and tickets will be created only by server functions once M-Pesa is connected.
+- **Security rules:** `firestore.rules`. After changing them, paste the whole file into Firebase console → Firestore Database → Rules → **Publish**.
+- **Netlify:** builds from `netlify.toml` (copies the site to `dist/`, deploys functions). Needs the environment variable `FIREBASE_SERVICE_ACCOUNT` (the service account JSON). Never commit that file.
+- **Admins:** in Firestore, create a document in the `admins` collection whose ID is the person's user ID (from Authentication → Users), with any field, e.g. `name: "Aurelius"`.

@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261111a">
+  <link rel="stylesheet" href="css/styles.css?v=20261111b">
 </head>
 <body data-page="contact">
   <div id="site-header"></div>
@@ -55,8 +55,12 @@
   </main>
   <div id="site-footer"></div>
 
-  <script src="js/data.js?v=20261111a"></script>
-  <script src="js/app.js?v=20261111a"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js?v=20261111b"></script>
+  <script src="js/data.js?v=20261111b"></script>
+  <script src="js/app.js?v=20261111b"></script>
   <script>
     (function () {
       const { $, $$, icon, esc } = RR;
@@ -77,15 +81,18 @@
       $("#list-ev").addEventListener("click", () => { setTopic("partner"); $("#cform").scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => $("#c-name").focus(), 500); });
 
       const u = RR.currentUser();
-      if (u) { $("#c-name").value = u.name; $("#c-email").value = u.email; $("#c-phone").value = "0" + u.phone; }
+      if (u) { $("#c-name").value = u.name; $("#c-email").value = u.email; if (u.phone) $("#c-phone").value = "0" + u.phone; }
 
-      $("#cform").addEventListener("submit", (e) => {
+      $("#cform").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const f = e.target;
+        const f = e.target, btn = $("button[type=submit]", f);
         const errs = { "c-name": $("#c-name").value.trim().length < 2, "c-email": !RR.validEmail($("#c-email").value), "c-msg": $("#c-msg").value.trim().length < 10 };
         Object.entries(errs).forEach(([k, b]) => RR.fieldErr(f, k, b));
         if (Object.values(errs).some(Boolean)) return;
-        // BACKEND: POST /api/contact { topic, name, email, phone, message }
+        btn.disabled = true;
+        const r = await RR.saveMessage({ topic, name: $("#c-name").value.trim(), email: $("#c-email").value.trim(), phone: $("#c-phone").value.trim(), message: $("#c-msg").value.trim() });
+        btn.disabled = false;
+        if (r.error) return RR.toast(r.error, "err");
         RR.toast("Thanks! Your message is on its way, and we'll get back to you soon.", "ok");
         $("#c-msg").value = "";
       });

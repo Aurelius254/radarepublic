@@ -1,0 +1,9 @@
+{
+  "name": "radarepublic",
+  "private": true,
+  "description": "Rada Republic: tickets and merch. Static site + Netlify functions + Firebase.",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

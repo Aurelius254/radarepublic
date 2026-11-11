@@ -1,0 +1,15 @@
+# Netlify: copies the static site into dist/ (so package files and server code aren't published)
+# and deploys the server functions from netlify/functions/.
+[build]
+  command = "mkdir -p dist && cp -r *.html css js assets dist/"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Cache static files, but always revalidate HTML so new versions show up straight away.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

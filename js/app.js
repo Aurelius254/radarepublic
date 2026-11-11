@@ -145,63 +145,203 @@
   }
 
   /* =========================================================
-     AUTH (mock)
-     BACKEND: replace with real API (hash passwords server-side!)
+     AUTH — Firebase
+     Sign in with Google, email + password, or phone + password.
+     Phone + password: a Netlify function (netlify/functions/phone-login.mjs) looks up the
+     account linked to the phone, checks the password, and returns a one-time sign-in token.
+     Profiles live in Firestore at users/{uid}; phones/{phone} maps a phone number to its account.
      ========================================================= */
-  const DEMO_USER = { id: "u_demo", name: "Wanjiku Kamau", phone: "712345678", email: "demo@radarepublic.co.ke", password: "rada2026", city: "Eldoret", gender: "", dob: "", joined: "2026-03-14" };
-  function users() {
-    let u = store.get("rr_users", null);
-    if (!u) { u = [DEMO_USER]; store.set("rr_users", u); }
-    return u;
-  }
   const normPhone = (p) => { p = String(p || "").replace(/\D/g, ""); if (p.startsWith("254")) p = p.slice(3); if (p.startsWith("0")) p = p.slice(1); return p; };
   const validPhone = (p) => /^[71]\d{8}$/.test(normPhone(p));
-  const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || "").trim());
+  const validEmail = (e) => /^[^\s@/]+@[^\s@/]+\.[^\s@/]{2,}$/.test(String(e || "").trim());
   const prettyPhone = (p) => { p = normPhone(p); return p ? `0${p.slice(0, 3)} ${p.slice(3, 6)} ${p.slice(6)}` : ""; };
 
-  function currentUser() {
-    const id = store.get("rr_session", null) || sess.get("rr_session", null);
-    return id ? users().find((u) => u.id === id) || null : null;
-  }
-  function startSession(u, persist) {
-    store.del("rr_session"); sess.del("rr_session");
-    (persist ? store : sess).set("rr_session", u.id);
-    seedDemoTickets(u);
-    onAuthChange();
-  }
-  function login(identifier, password, mode, persist) {
-    const list = users();
-    const u = mode === "phone"
-      ? list.find((x) => x.phone === normPhone(identifier))
-      : list.find((x) => x.email.toLowerCase() === String(identifier).trim().toLowerCase());
-    if (!u || u.password !== password) return { error: "Those details don't match an account. Check and try again." };
-    startSession(u, persist);
-    return { user: u };
-  }
-  function signup({ phone, name, email, password }) {
-    const list = users();
-    if (list.some((x) => x.phone === normPhone(phone))) return { error: "An account with that phone number already exists. Try signing in." };
-    if (list.some((x) => x.email.toLowerCase() === email.trim().toLowerCase())) return { error: "An account with that email already exists. Try signing in." };
-    const u = { id: "u_" + rid(10), name: name.trim(), phone: normPhone(phone), email: email.trim(), password, city: "", gender: "", dob: "", joined: new Date().toISOString().slice(0, 10) };
-    list.push(u); store.set("rr_users", list);
-    startSession(u, true);
-    return { user: u };
-  }
-  function updateUser(patch) {
-    const u = currentUser(); if (!u) return null;
-    const list = users().map((x) => (x.id === u.id ? { ...x, ...patch } : x));
-    store.set("rr_users", list); onAuthChange();
-    return list.find((x) => x.id === u.id);
-  }
-  function logout() {
-    store.del("rr_session"); sess.del("rr_session");
-    onAuthChange();
-    toast("You've been logged out.");
-    if (["profile", "tickets"].includes(document.body.dataset.page)) setTimeout(() => (location.href = "index.html"), 600);
-  }
+  const fb = window.firebase && window.RR_FIREBASE ? (firebase.apps.length ? firebase.app() : firebase.initializeApp(window.RR_FIREBASE)) : null;
+  const auth = fb ? firebase.auth() : null;
+  const db = fb ? firebase.firestore() : null;
+  const serverTs = () => firebase.firestore.FieldValue.serverTimestamp();
+  const today = () => new Date().toISOString().slice(0, 10);
+  const API = (path) => (window.RR_API || "") + path;
+
+  // The signed-in user's profile. Cached in this browser so the header shows instantly on page load;
+  // Firebase confirms (or clears) it a moment later.
+  let profile = store.get("rr_profile", null);
+  ["rr_users", "rr_session"].forEach((k) => { store.del(k); sess.del(k); });   // leftovers from the old demo login
+  let creatingAccount = false;
+
+  function currentUser() { return profile; }
+  function setProfile(p) { profile = p; if (p) store.set("rr_profile", p); else store.del("rr_profile"); onAuthChange(); }
   function onAuthChange() {
     renderUserMenu();
     document.dispatchEvent(new CustomEvent("rr:auth", { detail: currentUser() }));
+  }
+
+  // Read users/{uid}; create it the first time (e.g. first Google sign-in).
+  async function loadProfile(user) {
+    const ref = db.doc("users/" + user.uid);
+    let snap = await ref.get();
+    if (!snap.exists) {
+      await ref.set({ name: user.displayName || "", email: user.email || "", phone: "", city: "", gender: "", dob: "", joined: today(), createdAt: serverTs() });
+      snap = await ref.get();
+    }
+    const d = snap.data() || {};
+    return {
+      id: user.uid, name: d.name || user.displayName || "", email: user.email || d.email || "",
+      phone: d.phone || "", city: d.city || "", gender: d.gender || "", dob: d.dob || "", joined: d.joined || today(),
+      providers: (user.providerData || []).map((x) => x.providerId)
+    };
+  }
+
+  const SAME = "Those details don't match an account. Check and try again.";
+  const AUTH_ERRORS = {
+    "auth/invalid-credential": SAME, "auth/invalid-login-credentials": SAME, "auth/wrong-password": SAME, "auth/user-not-found": SAME,
+    "auth/email-already-in-use": "An account with that email already exists. Try signing in (or use Google).",
+    "auth/account-exists-with-different-credential": "That email already has an account. Sign in with your email and password.",
+    "auth/weak-password": "Use a stronger password (at least 8 characters).",
+    "auth/invalid-email": "Enter a valid email address.",
+    "auth/too-many-requests": "Too many attempts. Wait a few minutes and try again.",
+    "auth/network-request-failed": "No connection. Check your internet and try again.",
+    "auth/popup-closed-by-user": "", "auth/cancelled-popup-request": "", "auth/user-cancelled": "",
+    "auth/operation-not-allowed": "This sign-in method isn't switched on yet.",
+    "auth/unauthorized-domain": "Sign-in isn't enabled on this web address yet.",
+    "auth/requires-recent-login": "For your security, log out and sign in again, then retry.",
+    "permission-denied": "That wasn't allowed. Refresh the page and try again."
+  };
+  const authMsg = (e) => (e && e.code in AUTH_ERRORS ? AUTH_ERRORS[e.code] : (e && e.message) || "Something went wrong. Try again.");
+  const needFirebase = () => { if (!auth) throw { message: "Sign-in is unavailable right now. Refresh the page and try again." }; };
+  const keepSignedIn = (keep) => auth.setPersistence(keep ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION);
+
+  if (auth) {
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { setProfile(null); return; }
+      if (creatingAccount) return;           // signup() finishes the profile itself
+      try { setProfile(await loadProfile(user)); }
+      catch (e) { console.error(e); toast("Couldn't load your profile. Check your connection.", "err"); }
+    });
+    auth.getRedirectResult().catch((e) => { const m = authMsg(e); if (m) toast(m, "err"); });   // Google redirect fallback
+  } else {
+    profile = null;
+  }
+
+  async function login(identifier, password, mode, keep) {
+    try {
+      needFirebase();
+      await keepSignedIn(keep);
+      if (mode === "phone") {
+        const r = await fetch(API("/api/phone-login"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: normPhone(identifier), password }) });
+        let data = {}; try { data = await r.json(); } catch (_) {}
+        if (!r.ok || !data.token) return { error: data.error || "Phone sign-in isn't available right now. Use the Email tab instead." };
+        await auth.signInWithCustomToken(data.token);
+      } else {
+        await auth.signInWithEmailAndPassword(String(identifier).trim(), password);
+      }
+      const p = await loadProfile(auth.currentUser); setProfile(p);
+      return { user: p };
+    } catch (e) { return { error: authMsg(e) }; }
+  }
+
+  async function signup({ phone, name, email, password }) {
+    let cred;
+    try {
+      needFirebase();
+      await keepSignedIn(true);
+      creatingAccount = true;
+      cred = await auth.createUserWithEmailAndPassword(email.trim(), password);
+    } catch (e) { creatingAccount = false; return { error: authMsg(e) }; }
+    const uid = cred.user.uid, ph = normPhone(phone);
+    // Claim the phone number. The rules only allow creating phones/{phone} if nobody has it yet.
+    try { await db.doc("phones/" + ph).set({ uid }); }
+    catch (e) {
+      try { await cred.user.delete(); } catch (_) {}
+      creatingAccount = false;
+      return { error: "That phone number is already linked to an account. Try signing in with it." };
+    }
+    try {
+      await cred.user.updateProfile({ displayName: name.trim() });
+      await db.doc("users/" + uid).set({ name: name.trim(), email: email.trim(), phone: ph, city: "", gender: "", dob: "", joined: today(), createdAt: serverTs() });
+      cred.user.sendEmailVerification().catch(() => {});   // also protects the account if they later use Google with the same email
+      const p = await loadProfile(cred.user);
+      creatingAccount = false; setProfile(p);
+      return { user: p };
+    } catch (e) { creatingAccount = false; return { error: authMsg(e) }; }
+  }
+
+  async function googleSignIn() {
+    try {
+      needFirebase();
+      await keepSignedIn(true);
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      let res;
+      try { res = await auth.signInWithPopup(provider); }
+      catch (e) {
+        if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") { await auth.signInWithRedirect(provider); return { redirect: true }; }
+        throw e;
+      }
+      const p = await loadProfile(res.user); setProfile(p);
+      return { user: p };
+    } catch (e) { return { error: authMsg(e) }; }
+  }
+
+  async function resetPassword(email) {
+    try { needFirebase(); await auth.sendPasswordResetEmail(email.trim()); return { ok: true }; }
+    catch (e) { if (e.code === "auth/user-not-found") return { ok: true }; return { error: authMsg(e) }; }   // don't reveal which emails have accounts
+  }
+
+  // Update editable profile fields. Changing the phone moves the phones/{phone} link too.
+  async function updateUser(patch) {
+    const u = currentUser();
+    if (!u || !auth || !auth.currentUser) return { error: "Please sign in again." };
+    try {
+      const clean = {};
+      ["name", "phone", "city", "gender", "dob"].forEach((k) => { if (k in patch) clean[k] = String(patch[k] || "").trim(); });
+      if ("phone" in clean) {
+        clean.phone = normPhone(clean.phone);
+        if (clean.phone !== u.phone) {
+          if (clean.phone) {
+            try { await db.doc("phones/" + clean.phone).set({ uid: u.id }); }
+            catch (e) { return { error: "That phone number is already linked to another account." }; }
+          }
+          if (u.phone) { try { await db.doc("phones/" + u.phone).delete(); } catch (_) {} }
+        }
+      }
+      await db.doc("users/" + u.id).update(clean);
+      if (clean.name && auth.currentUser.displayName !== clean.name) await auth.currentUser.updateProfile({ displayName: clean.name });
+      const p = { ...u, ...clean }; setProfile(p);
+      return { user: p };
+    } catch (e) { return { error: authMsg(e) }; }
+  }
+
+  async function changePassword(oldPw, newPw) {
+    try {
+      const user = auth.currentUser;
+      const cred = firebase.auth.EmailAuthProvider.credential(user.email, oldPw);
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPw);
+      return { ok: true };
+    } catch (e) { return { error: e.code && /wrong-password|invalid-credential|invalid-login/.test(e.code) ? "Current password is incorrect." : authMsg(e) }; }
+  }
+
+  async function logout() {
+    try { if (auth) await auth.signOut(); } catch (_) {}
+    setProfile(null);
+    toast("You've been logged out.");
+    if (["profile", "tickets"].includes(document.body.dataset.page)) setTimeout(() => (location.href = "index.html"), 600);
+  }
+
+  /* ---------- Contact messages & newsletter → Firestore ---------- */
+  async function saveMessage(m) {
+    if (!db) return { error: "Couldn't send your message right now. Refresh and try again." };
+    try {
+      await db.collection("messages").add({ topic: m.topic, name: m.name, email: m.email, phone: m.phone || "", message: m.message, uid: profile ? profile.id : null, status: "new", createdAt: serverTs() });
+      return { ok: true };
+    } catch (e) { console.error(e); return { error: "Couldn't send your message. Check your connection and try again." }; }
+  }
+  async function subscribe(email, source = "footer") {
+    if (!db) return { error: "Couldn't sign you up right now. Refresh and try again." };
+    const id = String(email).trim().toLowerCase();
+    try { await db.doc("subscribers/" + id).set({ email: id, source, createdAt: serverTs() }); return { ok: true }; }
+    catch (e) { if (e.code === "permission-denied") return { ok: true, already: true }; console.error(e); return { error: "Couldn't sign you up. Check your connection and try again." }; }
   }
 
   /* =========================================================
@@ -251,23 +391,6 @@
     return store.get("rr_tickets", []).filter((t) => t.userId === u.id || (t.email || "").toLowerCase() === u.email.toLowerCase());
   }
   const userOrders = (u = currentUser()) => (u ? store.get("rr_orders", []).filter((o) => o.userId === u.id || o.contact.email.toLowerCase() === u.email.toLowerCase()) : []);
-
-  // DEMO ONLY: prefill sample tickets the first time a user signs in so "My Tickets" isn't empty.
-  function seedDemoTickets(u) {
-    const flag = "rr_seeded_" + u.id;
-    if (store.get(flag, false)) return;
-    store.set(flag, true);
-    const samples = [
-      { eventId: "e1", tier: "VIP", price: 3000 },
-      { eventId: "e6", tier: "Regular", price: 3000 },
-      { eventId: "e6", tier: "Regular", price: 3000 }
-    ];
-    const oid = "RR-" + rid(6);
-    const t = samples.map((s) => ({ code: `RR-${rid(4)}-${rid(4)}`, orderId: oid, eventId: s.eventId, tier: s.tier, price: s.price, email: u.email, name: u.name, userId: u.id, issued: new Date().toISOString() }));
-    store.set("rr_tickets", [...store.get("rr_tickets", []), ...t]);
-    const items = [{ type: "ticket", id: "e1", variant: "VIP", name: getEvent("e1").title, price: 3000, qty: 1 }, { type: "ticket", id: "e6", variant: "Regular", name: getEvent("e6").title, price: 3000, qty: 2 }];
-    store.set("rr_orders", [...store.get("rr_orders", []), { id: oid, items, contact: { name: u.name, email: u.email, phone: u.phone }, subtotal: 9000, deliveryFee: 0, total: 9000, mpesaPhone: u.phone, mpesaRef: "S" + rid(9), userId: u.id, created: new Date().toISOString(), status: "paid" }]);
-  }
 
   /* ---------- QR ---------- */
   function renderQR(el, text) {
@@ -431,13 +554,16 @@
         </div>
       </div>
     </footer>`;
-    $("#news-form").addEventListener("submit", (e) => {
+    $("#news-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const i = $("input", e.target);
+      const i = $("input", e.target), btn = $("button", e.target);
       if (!validEmail(i.value)) { i.classList.add("err"); toast("Enter a valid email address.", "err"); return; }
-      i.classList.remove("err"); i.value = "";
-      // BACKEND: POST /newsletter
-      toast("You're in! Watch your inbox.", "ok");
+      i.classList.remove("err"); btn.disabled = true;
+      const r = await subscribe(i.value);
+      btn.disabled = false;
+      if (r.error) return toast(r.error, "err");
+      i.value = "";
+      toast(r.already ? "You're already on the list. See you soon!" : "You're in! Watch your inbox.", "ok");
     });
   }
 
@@ -496,68 +622,122 @@
     if (msg) { const m = $(".err-msg", f); if (m && msg !== true) m.textContent = msg; }
   }
 
+  const GOOGLE_G = '<svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+
   function openAuth(mode = "login", { onSuccess } = {}) {
-    let loginMode = "phone";
+    let loginMode = "phone", busy = false;
     const o = openModal('<div id="auth-body"></div>');
     const body = $("#auth-body", o);
+    const googleBtn = (label) => `<button type="button" class="btn btn-google btn-block btn-lg" id="google-btn">${GOOGLE_G}<span>${label}</span></button>
+      <div class="or-div"><span>or</span></div>`;
     const render = () => {
       if (mode === "login") {
         body.innerHTML = `<h2>Welcome back</h2>
-          <p class="sub">Sign in with your phone or email and your password.</p>
+          <p class="sub">Sign in with Google, or your phone or email and password.</p>
+          <div class="form-err" id="auth-err"></div>
+          ${googleBtn("Continue with Google")}
           <div class="seg" style="margin-bottom:18px"><div class="seg-inner">
             <button type="button" data-lm="phone" class="${loginMode === "phone" ? "active" : ""}">Phone</button>
             <button type="button" data-lm="email" class="${loginMode === "email" ? "active" : ""}">Email</button></div></div>
           <form novalidate id="auth-form">
-            <div class="form-err" id="auth-err"></div>
             ${loginMode === "phone" ? phoneField("li-id") : `<div class="field" data-f="li-id"><label class="label" for="li-id">Email address</label><input class="input" id="li-id" type="email" placeholder="you@example.com" autocomplete="email"><span class="err-msg">Enter a valid email address</span></div>`}
             ${pwField("li-pw", "Password", "Password", '<a href="#" id="forgot">Forgot?</a>')}
             <label class="check"><input type="checkbox" id="li-keep" checked> Keep me signed in on this device</label>
-            <button class="btn btn-primary btn-block btn-lg" type="submit">Sign in ${icon("arrow")}</button>
+            <button class="btn btn-primary btn-block btn-lg" type="submit" id="auth-submit">Sign in ${icon("arrow")}</button>
           </form>
           <p class="switch">New to Rada Republic? <button type="button" data-switch="signup">Create an account</button></p>`;
-      } else {
+      } else if (mode === "signup") {
         body.innerHTML = `<h2>Create your account</h2>
-          <p class="sub">Just the basics — phone, name, email &amp; a password. Takes 30 seconds.</p>
+          <p class="sub">One tap with Google, or just the basics: phone, name, email &amp; a password.</p>
+          <div class="form-err" id="auth-err"></div>
+          ${googleBtn("Sign up with Google")}
           <form novalidate id="auth-form">
-            <div class="form-err" id="auth-err"></div>
             ${phoneField("su-phone", "Phone")}
             <div class="field" data-f="su-name"><label class="label" for="su-name">Full name</label><input class="input" id="su-name" placeholder="Full name" autocomplete="name"><span class="err-msg">Enter your full name</span></div>
             <div class="field" data-f="su-email"><label class="label" for="su-email">Email</label><input class="input" id="su-email" type="email" placeholder="Email address" autocomplete="email"><span class="err-msg">Enter a valid email address</span></div>
             ${pwField("su-newpw", "Password", "Password (8+ characters)")}
-            <button class="btn btn-primary btn-block btn-lg" type="submit">Create account ${icon("arrow")}</button>
+            <button class="btn btn-primary btn-block btn-lg" type="submit" id="auth-submit">Create account ${icon("arrow")}</button>
           </form>
           <p class="switch">Already on Rada Republic? <button type="button" data-switch="login">Sign in</button></p>`;
+      } else {
+        body.innerHTML = `<h2>Reset your password</h2>
+          <p class="sub">Enter your account email and we'll send you a link to set a new password.</p>
+          <div class="form-err" id="auth-err"></div>
+          <form novalidate id="auth-form">
+            <div class="field" data-f="rs-email"><label class="label" for="rs-email">Email address</label><input class="input" id="rs-email" type="email" placeholder="you@example.com" autocomplete="email"><span class="err-msg">Enter a valid email address</span></div>
+            <button class="btn btn-primary btn-block btn-lg" type="submit" id="auth-submit">Send reset link ${icon("arrow")}</button>
+          </form>
+          <p class="switch">Remembered it? <button type="button" data-switch="login">Back to sign in</button></p>`;
       }
       wireEyes(body);
       $$("[data-lm]", body).forEach((b) => b.addEventListener("click", () => { loginMode = b.dataset.lm; render(); }));
       $$("[data-switch]", body).forEach((b) => b.addEventListener("click", () => { mode = b.dataset.switch; render(); }));
       const fg = $("#forgot", body);
-      if (fg) fg.addEventListener("click", (e) => { e.preventDefault(); toast("Password reset is coming soon — contact support for now."); }); // BACKEND: reset flow
+      if (fg) fg.addEventListener("click", (e) => { e.preventDefault(); mode = "reset"; render(); });
+      const gb = $("#google-btn", body);
+      if (gb) gb.addEventListener("click", async () => {
+        if (busy) return;
+        setBusy(true, gb);
+        const r = await googleSignIn();
+        setBusy(false, gb);
+        if (r.redirect) return;
+        if (r.error) return showErr(r.error);
+        if (r.user) done(r.user, true);
+      });
       $("#auth-form", body).addEventListener("submit", submit);
-      const first = $("input", body); if (first) setTimeout(() => first.focus(), 60);
+      const first = $("form input", body); if (first) setTimeout(() => first.focus(), 60);
     };
-    const showErr = (m) => { const e = $("#auth-err", body); e.textContent = m; e.classList.add("show"); };
-    function submit(ev) {
+    const showErr = (m) => { if (!m) return; const e = $("#auth-err", body); e.textContent = m; e.classList.add("show"); };
+    const setBusy = (on, btn) => {
+      busy = on;
+      $$("button", body).forEach((b) => (b.disabled = on));
+      if (btn) {
+        if (on) { btn.dataset.html = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span> Please wait…'; }
+        else if (btn.dataset.html) btn.innerHTML = btn.dataset.html;
+      }
+    };
+    const done = (user, isGoogle) => {
+      closeModal();
+      const first = (user.name || "").split(" ")[0] || "there";
+      toast(mode === "signup" && !isGoogle ? `Karibu, ${first}! Your account is ready.` : `Welcome, ${first}!`, "ok");
+      if (onSuccess) onSuccess(user);
+    };
+    async function submit(ev) {
       ev.preventDefault();
+      if (busy) return;
       $("#auth-err", body).classList.remove("show");
+      const btn = $("#auth-submit", body);
       if (mode === "login") {
         const id = $("#li-id", body).value, pw = $("#li-pw", body).value;
         const idOk = loginMode === "phone" ? validPhone(id) : validEmail(id);
         fieldErr(body, "li-id", !idOk); fieldErr(body, "li-pw", pw ? "" : "Enter your password");
         if (!idOk || !pw) return;
-        const r = login(id, pw, loginMode, $("#li-keep", body).checked);
+        setBusy(true, btn);
+        const r = await login(id, pw, loginMode, $("#li-keep", body).checked);
+        setBusy(false, btn);
         if (r.error) return showErr(r.error);
-        closeModal(); toast(`Welcome back, ${r.user.name.split(" ")[0]}!`, "ok");
-        if (onSuccess) onSuccess(r.user);
-      } else {
+        done(r.user);
+      } else if (mode === "signup") {
         const v = { phone: $("#su-phone", body).value, name: $("#su-name", body).value, email: $("#su-email", body).value, password: $("#su-newpw", body).value };
         const errs = { "su-phone": !validPhone(v.phone), "su-name": v.name.trim().length < 2, "su-email": !validEmail(v.email), "su-newpw": v.password.length < 8 ? "Use at least 8 characters" : "" };
         Object.entries(errs).forEach(([k, m]) => fieldErr(body, k, m));
         if (Object.values(errs).some(Boolean)) return;
-        const r = signup(v);
+        setBusy(true, btn);
+        const r = await signup(v);
+        setBusy(false, btn);
         if (r.error) return showErr(r.error);
-        closeModal(); toast(`Karibu, ${r.user.name.split(" ")[0]}! Your account is ready.`, "ok");
-        if (onSuccess) onSuccess(r.user);
+        done(r.user);
+      } else {
+        const em = $("#rs-email", body).value;
+        fieldErr(body, "rs-email", !validEmail(em));
+        if (!validEmail(em)) return;
+        setBusy(true, btn);
+        const r = await resetPassword(em);
+        setBusy(false, btn);
+        if (r.error) return showErr(r.error);
+        body.innerHTML = `<h2>Check your inbox</h2><p class="sub">If an account exists for <b style="color:var(--text)">${esc(em)}</b>, a reset link is on its way. It can take a minute, so check spam too.</p>
+          <button class="btn btn-primary btn-block btn-lg" type="button" id="back-login">Back to sign in</button>`;
+        $("#back-login", body).addEventListener("click", () => { mode = "login"; loginMode = "email"; render(); });
       }
     }
     render();
@@ -589,7 +769,7 @@
   window.RR = {
     $, $$, store, fmt, esc, qs, fmtDate, fmtShort, fmtTime, minPrice, rid, icon, poster, productArt, eventCard, productCard,
     getEvent, getProduct, upcomingEvents, featuredEvent, initials,
-    currentUser, updateUser, logout, openAuth, normPhone, validPhone, validEmail, prettyPhone,
+    currentUser, updateUser, changePassword, logout, openAuth, normPhone, validPhone, validEmail, prettyPhone, saveMessage, subscribe,
     cart, addToCart, setQty, removeItem, clearCart, cartCount, cartSubtotal, cartThumb,
     createOrder, getOrder, orderTickets, userTickets, userOrders, renderQR,
     openModal, closeModal, phoneField, fieldErr, toast, socialsHTML, initReveal
@@ -597,7 +777,6 @@
 
   renderHeader();
   renderFooter();
-  users();
   if (qs("auth") === "login" || qs("auth") === "signup") setTimeout(() => openAuth(qs("auth")), 100);
   document.addEventListener("DOMContentLoaded", initReveal);
 })();
