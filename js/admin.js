@@ -49,18 +49,32 @@
       ${signIn ? `<div class="actions"><button class="btn btn-primary" id="ad-login">Log in</button></div>` : `<div class="actions"><a class="btn btn-ghost" href="index.html">Back to the site</a></div>`}</div>`;
     const b = $("#ad-login"); if (b) b.addEventListener("click", () => RR.openAuth("login"));
   }
-  function gate() {
-    if (started) return;
-    if (!auth) return locked("Admin panel unavailable", "Couldn't connect to the database. Refresh the page.", false);
-    if (!authKnown) return;
-    if (!auth.currentUser) return locked("Admins only", "Log in with an admin account to manage the site.", true);
-    const u = RR.currentUser();
-    if (!u || u.id !== auth.currentUser.uid) return;   // profile still loading
-    if (!u.isAdmin) return locked("You don't have admin access", "This account isn't on the admins list. Ask an existing admin to add your user ID.", false);
-    started = true; shell(); loadAll();
+  function status(msg) { root.innerHTML = `<div class="empty"><div class="em-ic"><span class="spinner" style="width:30px;height:30px"></span></div><h2>${msg}</h2></div>`; }
+  function crashed(e) {
+    console.error(e);
+    root.innerHTML = `<div class="empty"><div class="em-ic">${icon("info")}</div><h2>The admin panel hit a problem</h2>
+      <p>Refresh the page. If it keeps happening, send this message to your developer:</p>
+      <pre style="white-space:pre-wrap;text-align:left;font-size:12.5px;color:#ff8b96;background:var(--surface);padding:12px;border-radius:12px">${esc((e && (e.code || e.name)) + ": " + (e && e.message))}</pre></div>`;
   }
-  if (auth) auth.onAuthStateChanged(() => { authKnown = true; setTimeout(gate, 0); });
-  document.addEventListener("rr:auth", () => { if (!RR.currentUser()) started = false; gate(); });
+  // Checks the admins list directly (not the cached profile), so a stale profile can't block or blank the page.
+  let checking = null;
+  async function gate() {
+    if (started) return;
+    try {
+      if (!auth || !db) return locked("Admin panel unavailable", "Couldn't connect to the database. Refresh the page.", false);
+      if (!authKnown) return;
+      const user = auth.currentUser;
+      if (!user) { checking = null; return locked("Admins only", "Log in with an admin account to manage the site.", true); }
+      if (checking === user.uid) return;
+      checking = user.uid;
+      status("Checking your access…");
+      const isAdmin = (await db.doc("admins/" + user.uid).get()).exists;
+      if (!auth.currentUser || auth.currentUser.uid !== user.uid) { checking = null; return gate(); }
+      if (!isAdmin) return locked("You don't have admin access", `This account isn't on the admins list. Your user ID is <code style="user-select:all">${esc(user.uid)}</code>.`, false);
+      started = true; shell(); loadAll();
+    } catch (e) { checking = null; crashed(e); }
+  }
+  if (auth) auth.onAuthStateChanged((user) => { authKnown = true; if (!user) { started = false; checking = null; } setTimeout(gate, 0); });
 
   /* ---------- data ---------- */
   async function loadAll() {
@@ -80,7 +94,7 @@
       S.messages = msg.docs.map((d) => ({ ...d.data(), id: d.id }));
       S.subscribers = sub.docs.map((d) => ({ ...d.data(), id: d.id }));
       S.loaded = true;
-    } catch (e) { fail(e, "load the admin data"); }
+    } catch (e) { S.error = (e.code || "") + " " + (e.message || e); fail(e, "load the admin data"); }
     renderNav(); view();
   }
 
@@ -101,8 +115,9 @@
   }
   function view() {
     const m = $("#ad-main"); if (!m) return;
-    if (!S.loaded) { m.innerHTML = `<div class="empty"><span class="spinner"></span></div>`; return; }
-    ({ dashboard: vDashboard, events: vEvents, merch: vMerch, content: vContent, faq: vFaq, inbox: vInbox, subscribers: vSubscribers }[tab] || vDashboard)(m);
+    if (!S.loaded) { m.innerHTML = S.error ? `<div class="empty"><h2>Couldn't load the admin data</h2><p class="muted">${esc(S.error)}</p><div class="actions"><button class="btn btn-primary" onclick="location.reload()">Try again</button></div></div>` : `<div class="empty"><span class="spinner"></span></div>`; return; }
+    try { ({ dashboard: vDashboard, events: vEvents, merch: vMerch, content: vContent, faq: vFaq, inbox: vInbox, subscribers: vSubscribers }[tab] || vDashboard)(m); }
+    catch (e) { console.error(e); m.innerHTML = `<div class="empty"><h2>This section hit a problem</h2><pre style="white-space:pre-wrap;text-align:left;font-size:12.5px;color:#ff8b96">${esc(e.message)}</pre></div>`; }
     m.scrollTop = 0;
   }
   const head = (title, sub, actions = "") => `<div class="ad-head"><div><h1 class="h2">${title}</h1>${sub ? `<p class="muted">${sub}</p>` : ""}</div><div class="ad-head-actions">${actions}</div></div>`;
@@ -181,7 +196,7 @@
     const upcoming = pub.filter((e) => !isPast(e));
     const newMsgs = S.messages.filter((x) => x.status === "new");
     const featured = S.events.find((e) => e.featured);
-    m.innerHTML = head("Dashboard", `Signed in as ${esc(RR.currentUser().name || RR.currentUser().email)}`) + importBanner() + `
+    m.innerHTML = head("Dashboard", `Signed in as ${esc(((RR.currentUser() || {}).name) || (auth.currentUser && (auth.currentUser.displayName || auth.currentUser.email || auth.currentUser.phoneNumber)) || "admin")}`) + importBanner() + `
       <div class="ad-stats">
         <a class="stat" href="#events"><b class="grad-text">${upcoming.length}</b><span>Upcoming events live</span></a>
         <a class="stat" href="#merch"><b class="grad-text">${S.products.filter((p) => p.published !== false).length}</b><span>Merch items live</span></a>
