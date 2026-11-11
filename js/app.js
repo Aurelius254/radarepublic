@@ -218,7 +218,14 @@
     auth.onAuthStateChanged(async (user) => {
       if (!user) { setProfile(null); return; }
       if (creatingAccount) return;           // signup() finishes the profile itself
-      try { setProfile(await loadProfile(user)); }
+      try {
+        const p = await loadProfile(user); setProfile(p);
+        // Self-repair: make sure the profile's phone is linked for phone sign-in (create-only, so it can't take anyone's number).
+        const k = "rr_phlink_" + user.uid;
+        if (p && p.phone && store.get(k, "") !== p.phone) {
+          db.doc("phones/" + p.phone).set({ uid: user.uid }).catch(() => {}).finally(() => store.set(k, p.phone));
+        }
+      }
       catch (e) { console.error(e); toast("Couldn't load your profile. Check your connection.", "err"); }
     });
     auth.getRedirectResult().catch((e) => { const m = authMsg(e); if (m) toast(m, "err"); });   // Google redirect fallback
